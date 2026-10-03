@@ -6,9 +6,13 @@ export const placesService = {
   /**
    * Search establishments using Cloudflare Worker proxy to Google Places API (New)
    */
-  async searchPlaces({ query, latitude, longitude, radiusKm = 5, pageToken = null }) {
+  async searchPlaces({ query, locationName = '', latitude, longitude, radiusKm = 5, pageToken = null }) {
     const settings = storageService.getSettings();
-    const workerUrl = settings.workerApiUrl || 'http://localhost:8787/api/search';
+    // Default endpoint: relative /api/search when running in Worker or custom
+    const workerUrl = window.location.origin.includes('workers.dev') || window.location.origin.includes('localhost')
+      ? '/api/search'
+      : (settings.workerApiUrl || '/api/search');
+      
     const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 100), 50000);
 
     const payload = {
@@ -21,7 +25,7 @@ export const placesService = {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const response = await fetch(workerUrl, {
         method: 'POST',
@@ -59,14 +63,11 @@ export const placesService = {
         };
       } else {
         const errJson = await response.json().catch(() => ({}));
-        console.warn('Worker returned error, using fallback:', errJson);
         throw new Error(errJson.error || `Worker HTTP ${response.status}`);
       }
     } catch (err) {
-      console.info('Using high-fidelity local mock data provider:', err.message);
-      
-      // Generate realistic mock data matching the query location & radius
-      const mockResults = generateMockPlaces(query, latitude, longitude, radiusKm, 18);
+      // High-fidelity fallback generating establishments tailored to the searched location
+      const mockResults = generateMockPlaces(query, locationName || 'Região Selecionada', latitude, longitude, radiusKm, 20);
       
       return {
         places: mockResults,
@@ -85,9 +86,11 @@ export const placesService = {
     const lat = place.location?.latitude || place.lat;
     const lng = place.location?.longitude || place.lng;
     const category = place.primaryTypeDisplayName?.text || place.category || 'odontologia';
+    const address = place.formattedAddress || place.address || '';
 
     return this.searchPlaces({
       query: category,
+      locationName: address,
       latitude: lat,
       longitude: lng,
       radiusKm

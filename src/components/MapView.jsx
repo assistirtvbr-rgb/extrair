@@ -45,10 +45,10 @@ export default function MapView({
       attributionControl: false
     });
 
-    // Clean, high-contrast B2B map tiles (CartoDB Positron / OSM)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // 100% Free OpenStreetMap Standard Tiles (No API key needed, no watermarks)
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     // Zoom control on top-left
