@@ -54,9 +54,7 @@ export default function SearchBar({
 
   const handleCategoryClick = (catQuery) => {
     setQuery(catQuery);
-    if (locationInput.trim()) {
-      onSearch(catQuery, locationInput, radiusKm);
-    }
+    onSearch(catQuery, locationInput || 'Brasil', radiusKm);
   };
 
   const handleLocateClick = async () => {

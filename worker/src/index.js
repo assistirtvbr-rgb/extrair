@@ -334,7 +334,8 @@ async function fetchFreeWebPlaces(query, locationName, lat, lng) {
 
       // Check for Instagram profile
       const instaMatch = rawUrl.match(/instagram\.com\/([a-zA-Z0-9._]+)\/?/i);
-      if (instaMatch && !['p', 'explore', 'stories', 'reel', 'tv', 'direct', 'locations'].includes(instaMatch[1].toLowerCase())) {
+      const blockedRoutes = ['p', 'explore', 'stories', 'reel', 'reels', 'tv', 'direct', 'locations', 'popular', 'tags', 'about', 'accounts', 'developer', 'help', 'privacy', 'legal', 'terms', 'directory', 'press', 'api', 'login', 'signup'];
+      if (instaMatch && !blockedRoutes.includes(instaMatch[1].toLowerCase())) {
         const handle = '@' + instaMatch[1].replace('@', '');
         let cleanName = rawTitle.split('(')[0].split('•')[0].split('-')[0].replace(/Instagram/i, '').replace(/fotos e vídeos/i, '').trim();
         if (!cleanName || cleanName.length < 3) cleanName = handle;

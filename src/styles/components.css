@@ -396,7 +396,6 @@
 
 .result-row.active {
   background-color: #F4F6FF;
-  border-left: 3.5px solid var(--brand-primary);
 }
 
 .result-row.selected {

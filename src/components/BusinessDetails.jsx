@@ -112,9 +112,11 @@ export default function BusinessDetails({
   const reviews = place.userRatingCount || 0;
   const distance = place.distanceKm;
   const mapsUrl = place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`)}`;
-  const hours = place.currentOpeningHours?.weekdayDescriptions || [];
-
-  const dp = place.digitalPresence || leadData.digitalPresence || {};
+  const dp = {
+    ...(place.socials || {}),
+    ...(place.digitalPresence || {}),
+    ...(leadData.digitalPresence || {})
+  };
   const scoreData = calculateLeadScore(place, leadData);
 
   const saveUpdates = (updates) => {
