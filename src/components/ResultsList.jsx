@@ -20,6 +20,7 @@ export default function ResultsList({
   places = [],
   isLoading = false,
   isLoadingMore = false,
+  hasSearchedOnce = false,
   apiError = null,
   hasNextPage = false,
   onLoadMore,
@@ -176,7 +177,22 @@ export default function ResultsList({
     );
   }
 
-  // Empty Results State
+  // Initial State Before Any Search
+  if (!hasSearchedOnce && places.length === 0) {
+    return (
+      <div className="empty-state-container">
+        <div className="empty-state-icon" style={{ background: 'var(--brand-subtle)', color: 'var(--brand-primary)' }}>
+          <Search size={28} />
+        </div>
+        <h3 className="empty-state-title">Pronto para prospectar</h3>
+        <p className="empty-state-desc">
+          Digite o segmento de mercado (ex: <em>odontologia</em>, <em>padaria</em>, <em>farmácia</em>) e a localização acima, depois clique em <strong>Buscar Empresas</strong>.
+        </p>
+      </div>
+    );
+  }
+
+  // Empty Results State After Search
   if (places.length === 0) {
     return (
       <div className="empty-state-container">
@@ -187,7 +203,7 @@ export default function ResultsList({
         <p className="empty-state-desc">
           Não encontramos empresas para esta busca dentro do raio solicitado.
           <br />
-          <strong>Sugestão:</strong> Ajuste o raio de pesquisa ou experimente outro termo (ex: <em>"odontologia"</em> ou <em>"academia"</em>).
+          <strong>Sugestão:</strong> Ajuste o raio de pesquisa para uma distância maior ou utilize o botão GPS para refinar as coordenadas.
         </p>
       </div>
     );

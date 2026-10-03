@@ -6,6 +6,7 @@ import {
   SlidersHorizontal, 
   Loader2,
   X,
+  XCircle,
   Sparkles
 } from 'lucide-react';
 import RadiusSelector from './RadiusSelector';
@@ -18,6 +19,8 @@ export default function SearchBar({
   radiusKm,
   setRadiusKm,
   onSearch,
+  onCancelSearch,
+  searchProgress = 0,
   onGetCurrentLocation,
   onOpenFilters,
   filters,
@@ -68,7 +71,7 @@ export default function SearchBar({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!query.trim()) return;
-    onSearch(query, locationInput, radiusKm);
+    onSearch(query, locationInput || 'Brasil', radiusKm);
   };
 
   // Build active filter items
@@ -82,7 +85,27 @@ export default function SearchBar({
   if (filters.onlyOpenNow) activeFilters.push({ key: 'open', label: 'Aberto agora', reset: () => setFilters(f => ({ ...f, onlyOpenNow: false })) });
 
   return (
-    <div className="search-header-container">
+    <div className="search-header-container" style={{ position: 'relative' }}>
+      {/* Search Progress Bar */}
+      {isLoading && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '3px',
+          background: 'rgba(82, 98, 245, 0.15)',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${searchProgress || 20}%`,
+            background: 'var(--brand-primary)',
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Horizontal Primary Search Controls Bar */}
         <div className="search-primary-row">
@@ -93,7 +116,7 @@ export default function SearchBar({
               ref={searchInputRef}
               type="text"
               className="search-input-main"
-              placeholder="Qual segmento ou tipo de empresa? (ex: odontologia, academias, restaurantes...)"
+              placeholder="Digite o segmento (ex: odontologia, padaria, academia...)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Tipo de empresa"
@@ -106,7 +129,7 @@ export default function SearchBar({
             <input
               type="text"
               className="location-input"
-              placeholder="Cidade, bairro ou CEP (ex: 26150-387 ou Belford Roxo)"
+              placeholder="Digite a cidade, bairro ou CEP (ex: Belford Roxo ou 26150-387)"
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
               aria-label="Localização de busca"
@@ -144,25 +167,29 @@ export default function SearchBar({
             )}
           </button>
 
-          {/* Primary Submit Button */}
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isLoading || !query.trim()}
-            style={{ height: '46px', padding: '0 22px', fontSize: '14px', minWidth: '150px' }}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Buscando...</span>
-              </>
-            ) : (
-              <>
-                <Search size={16} />
-                <span>Buscar Empresas</span>
-              </>
-            )}
-          </button>
+          {/* Primary Submit Button / Cancel Button */}
+          {isLoading ? (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onCancelSearch}
+              style={{ height: '46px', padding: '0 18px', fontSize: '13.5px', minWidth: '150px', borderColor: 'var(--color-alert)', color: 'var(--color-alert)' }}
+              title="Cancelar busca em andamento"
+            >
+              <XCircle size={16} color="var(--color-alert)" />
+              <span>Cancelar ({searchProgress}%)</span>
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!query.trim()}
+              style={{ height: '46px', padding: '0 22px', fontSize: '14px', minWidth: '150px' }}
+            >
+              <Search size={16} />
+              <span>Buscar Empresas</span>
+            </button>
+          )}
         </div>
 
         {/* Quick Suggestion Chips */}

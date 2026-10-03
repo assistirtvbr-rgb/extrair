@@ -101,6 +101,8 @@ export default function SearchView({
           radiusKm={radiusKm}
           setRadiusKm={setRadiusKm}
           onSearch={onSearch}
+          onCancelSearch={onCancelSearch}
+          searchProgress={searchProgress}
           onGetCurrentLocation={onGetCurrentLocation}
           onOpenFilters={() => setIsFiltersOpen(true)}
           filters={filters}
@@ -131,6 +133,7 @@ export default function SearchView({
             places={places}
             isLoading={isLoading}
             isLoadingMore={isLoadingMore}
+            hasSearchedOnce={hasSearchedOnce}
             apiError={apiError}
             hasNextPage={hasNextPage}
             onLoadMore={onLoadMore}

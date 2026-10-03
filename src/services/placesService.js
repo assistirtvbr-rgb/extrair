@@ -4,7 +4,7 @@ import { calculateDistance } from '../utils/distance';
 
 export const placesService = {
   /**
-   * Search establishments with real data (OpenStreetMap Overpass / Google Places API)
+   * Search establishments with real data (OpenStreetMap Nominatim / Overpass / Google Places API)
    */
   async searchPlaces({
     query,
@@ -18,7 +18,7 @@ export const placesService = {
   }) {
     const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 100), 50000);
 
-    // If explicit Demo mode is selected
+    // If explicit Demo mode is selected by the user
     if (isDemo) {
       await new Promise(r => setTimeout(r, 180));
       const mockResults = generateMockPlaces(
@@ -40,13 +40,13 @@ export const placesService = {
       };
     }
 
-    // Live Mode via Cloudflare Worker (Fetches real OpenStreetMap POIs or Google Places API)
+    // Live Mode via Cloudflare Worker (Fetches 100% real OpenStreetMap / Google Places data)
     const settings = storageService.getSettings();
     const endpoint = settings.workerApiUrl || '/api/search';
 
     const payload = {
       query: query.trim(),
-      locationName,
+      locationName: locationName.trim(),
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radius: radiusMeters,
@@ -77,19 +77,6 @@ export const placesService = {
           };
         });
 
-        // If OSM returned 0 places for very niche terms, supplement with realistic Brazilian data for that city
-        if (places.length === 0) {
-          const fallbackResults = generateMockPlaces(query, locationName, latitude, longitude, radiusKm, 18);
-          return {
-            places: fallbackResults,
-            nextPageToken: null,
-            isMock: false,
-            provider: 'OpenStreetMap (Dados Abertos)',
-            error: null,
-            total: fallbackResults.length
-          };
-        }
-
         return {
           places,
           nextPageToken: data.nextPageToken || null,
@@ -105,15 +92,13 @@ export const placesService = {
     } catch (err) {
       if (err.name === 'AbortError') throw err;
 
-      // Fallback
-      const fallbackResults = generateMockPlaces(query, locationName, latitude, longitude, radiusKm, 18);
       return {
-        places: fallbackResults,
+        places: [],
         nextPageToken: null,
         isMock: false,
-        provider: 'OpenStreetMap / Dados Locais',
-        error: null,
-        total: fallbackResults.length
+        provider: 'OpenStreetMap / Google Maps',
+        error: { message: err.message || 'Falha ao consultar estabelecimentos.' },
+        total: 0
       };
     }
   },

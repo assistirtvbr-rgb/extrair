@@ -28,8 +28,8 @@ export default function App() {
   const [isDemoMode, setIsDemoMode] = useState(settings.demoMode ?? false);
 
   // Search state
-  const [query, setQuery] = useState('odontologia');
-  const [locationInput, setLocationInput] = useState('Belford Roxo - RJ');
+  const [query, setQuery] = useState('');
+  const [locationInput, setLocationInput] = useState('');
   const [radiusKm, setRadiusKm] = useState(5);
   const [centerLat, setCenterLat] = useState(-22.7639);
   const [centerLng, setCenterLng] = useState(-43.3994);
@@ -37,6 +37,8 @@ export default function App() {
   const [nextPageToken, setNextPageToken] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchProgress, setSearchProgress] = useState(0);
+  const [hasSearchedOnce, setHasSearchedOnce] = useState(false);
   const [apiError, setApiError] = useState(null);
 
   // Selection & Details (Centralized)
@@ -73,6 +75,7 @@ export default function App() {
   // Toast notifications
   const [toasts, setToasts] = useState([]);
   const activeAbortControllerRef = useRef(null);
+  const progressTimerRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const showToast = (text, type = 'info') => {
@@ -90,9 +93,25 @@ export default function App() {
     setLists(storageService.getLists());
   }, []);
 
+  // Cancel in-flight search
+  const handleCancelSearch = useCallback(() => {
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+      activeAbortControllerRef.current = null;
+    }
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+    }
+    setIsLoading(false);
+    setSearchProgress(0);
+    showToast('Busca cancelada pelo usuário.');
+  }, []);
+
   // Perform Primary Search
   const handleSearch = useCallback(async (searchQuery, searchLocation, searchRadius, customLat = null, customLng = null) => {
-    // Cancel in-flight search
+    if (!searchQuery?.trim()) return;
+
+    // Cancel any previous in-flight search
     if (activeAbortControllerRef.current) {
       activeAbortControllerRef.current.abort();
     }
@@ -100,17 +119,29 @@ export default function App() {
     activeAbortControllerRef.current = abortController;
 
     setIsLoading(true);
+    setSearchProgress(15);
     setApiError(null);
     setActivePlace(null);
     setSelectedPlaces([]);
+    setHasSearchedOnce(true);
+
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    progressTimerRef.current = setInterval(() => {
+      setSearchProgress(prev => {
+        if (prev >= 85) return prev;
+        return prev + 15;
+      });
+    }, 400);
 
     try {
       let lat = customLat;
       let lng = customLng;
       let locName = searchLocation;
 
+      setSearchProgress(35);
+
       if (lat === null || lng === null) {
-        const geo = await geoService.geocode(searchLocation || 'Belford Roxo - RJ', isDemoMode);
+        const geo = await geoService.geocode(searchLocation || 'Brasil', isDemoMode);
         lat = geo.lat;
         lng = geo.lng;
         locName = geo.displayName || searchLocation;
@@ -118,6 +149,7 @@ export default function App() {
 
       setCenterLat(lat);
       setCenterLng(lng);
+      setSearchProgress(65);
 
       const res = await placesService.searchPlaces({
         query: searchQuery,
@@ -129,6 +161,8 @@ export default function App() {
         abortSignal: abortController.signal
       });
 
+      setSearchProgress(100);
+
       if (res.error) {
         setApiError(res.error);
         setPlaces([]);
@@ -137,6 +171,12 @@ export default function App() {
         setPlaces(res.places || []);
         setNextPageToken(res.nextPageToken || null);
         setApiError(null);
+
+        if ((res.places || []).length === 0) {
+          showToast(`Nenhum estabelecimento encontrado em ${locName}.`, 'info');
+        } else {
+          showToast(`${res.places.length} estabelecimentos reais carregados.`);
+        }
 
         // Save to history
         storageService.addHistory({
@@ -154,7 +194,9 @@ export default function App() {
         setPlaces([]);
       }
     } finally {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       setIsLoading(false);
+      setTimeout(() => setSearchProgress(0), 400);
     }
   }, [isDemoMode]);
 
@@ -191,10 +233,8 @@ export default function App() {
     }
   };
 
-  // Initial load
-  useEffect(() => {
-    handleSearch('odontologia', 'Belford Roxo - RJ', 5);
-  }, [handleSearch]);
+  // Pass props to SearchView
+  // (No auto-search on initial load, user triggers search deliberately)
 
   // GPS Location handler
   const handleGetCurrentLocation = async () => {
@@ -332,6 +372,9 @@ export default function App() {
               radiusKm={radiusKm}
               setRadiusKm={setRadiusKm}
               onSearch={handleSearch}
+              onCancelSearch={handleCancelSearch}
+              searchProgress={searchProgress}
+              hasSearchedOnce={hasSearchedOnce}
               onGetCurrentLocation={handleGetCurrentLocation}
               isLoading={isLoading}
               isLoadingMore={isLoadingMore}
