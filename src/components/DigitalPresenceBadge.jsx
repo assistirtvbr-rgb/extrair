@@ -9,18 +9,10 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
 
   const hasAnyChannel = Boolean(web || dp.instagram?.url || dp.whatsapp?.url || dp.facebook?.url || dp.linkedin?.url || dp.email?.address);
 
-  if (!hasAnyChannel) {
-    return (
-      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-        Canais não identificados
-      </span>
-    );
-  }
-
   return (
     <div className="digital-presence-strip" onClick={(e) => e.stopPropagation()}>
-      {/* Website */}
-      {web && (
+      {/* Website or Sem Site Badge */}
+      {web ? (
         <a
           href={web}
           target="_blank"
@@ -32,6 +24,15 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           <Globe size={12} />
           <span>{cleanWeb || 'Website'}</span>
         </a>
+      ) : (
+        <span 
+          className="social-pill-badge" 
+          style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-alert)', borderColor: 'rgba(239, 68, 68, 0.25)', fontWeight: '600' }}
+          title="Sem website próprio identificado - Excelente lead para oferta de desenvolvimento web!"
+        >
+          <Globe size={12} style={{ opacity: 0.7 }} />
+          <span>Sem site</span>
+        </span>
       )}
 
       {/* WhatsApp */}
