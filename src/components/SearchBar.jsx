@@ -52,9 +52,17 @@ export default function SearchBar({
     { label: 'Hotéis', query: 'hotel' }
   ];
 
+  const locationInputRef = React.useRef(null);
+
   const handleCategoryClick = (catQuery) => {
     setQuery(catQuery);
-    onSearch(catQuery, locationInput || 'Brasil', radiusKm);
+    if (locationInput && locationInput.trim()) {
+      onSearch(catQuery, locationInput.trim(), radiusKm);
+    } else {
+      if (locationInputRef.current) {
+        locationInputRef.current.focus();
+      }
+    }
   };
 
   const handleLocateClick = async () => {
@@ -68,8 +76,15 @@ export default function SearchBar({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
-    onSearch(query, locationInput || 'Brasil', radiusKm);
+    if (!query.trim()) {
+      if (searchInputRef?.current) searchInputRef.current.focus();
+      return;
+    }
+    if (!locationInput.trim()) {
+      if (locationInputRef.current) locationInputRef.current.focus();
+      return;
+    }
+    onSearch(query.trim(), locationInput.trim(), radiusKm);
   };
 
   // Build active filter items
@@ -125,6 +140,7 @@ export default function SearchBar({
           <div className="location-input-wrapper">
             <MapPin size={16} style={{ position: 'absolute', left: '12px', color: 'var(--text-secondary)' }} />
             <input
+              ref={locationInputRef}
               type="text"
               className="location-input"
               placeholder="Digite a cidade, bairro ou CEP (ex: Belford Roxo ou 26150-387)"
