@@ -1,5 +1,6 @@
 /**
  * Cloudflare Worker for LeadMap
+ * Unifies Frontend (React SPA Assets) and Backend API (/api/search).
  * Proxy to Google Places API (New) with FieldMask protection and API Key security.
  */
 
@@ -38,8 +39,8 @@ export default {
 
     const url = new URL(request.url);
 
-    // Health check / info
-    if (url.pathname === '/' || url.pathname === '/api/health') {
+    // Health check endpoint
+    if (url.pathname === '/api/health') {
       return jsonResponse({
         status: 'ok',
         service: 'LeadMap Cloudflare Worker API',
@@ -48,7 +49,7 @@ export default {
       });
     }
 
-    // Endpoint: POST /api/search
+    // API Search Endpoint: POST /api/search
     if (url.pathname === '/api/search') {
       if (request.method !== 'POST') {
         return jsonResponse({ error: 'Método não permitido. Use POST.' }, 405);
@@ -57,7 +58,7 @@ export default {
       if (!env.GOOGLE_PLACES_API_KEY) {
         return jsonResponse({
           error: 'Chave GOOGLE_PLACES_API_KEY não configurada no Cloudflare Worker Secrets.',
-          hint: 'Execute: wrangler secret put GOOGLE_PLACES_API_KEY'
+          hint: 'Execute: npx wrangler secret put GOOGLE_PLACES_API_KEY'
         }, 503);
       }
 
@@ -84,8 +85,6 @@ export default {
 
         // Clamp radius between 100 meters and 50,000 meters (50km)
         const parsedRadius = Math.min(Math.max(parseInt(radius, 10) || 5000, 100), 50000);
-
-        // Sanitize query to max 150 chars
         const sanitizedQuery = query.trim().substring(0, 150);
 
         // Call Google Places API (New) - SearchText
@@ -165,6 +164,14 @@ export default {
       }
     }
 
-    return jsonResponse({ error: 'Endpoint não encontrado.' }, 404);
+    // Se houver binding de assets estáticos (React compilado no dist), servir o Front-end SPA
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
+    return jsonResponse({
+      service: 'LeadMap API Worker',
+      message: 'Worker ativo. Para acessar a API use POST /api/search'
+    });
   }
 };

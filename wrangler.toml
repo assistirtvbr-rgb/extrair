@@ -1,0 +1,12 @@
+name = "extrair"
+main = "worker/src/index.js"
+compatibility_date = "2024-04-01"
+
+# Servir os arquivos compilados do React (dist) diretamente no Worker
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[vars]
+ENVIRONMENT = "production"
