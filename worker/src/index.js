@@ -357,15 +357,16 @@ export default {
         const body = await request.json().catch(() => null);
         if (!body) return jsonResponse({ error: 'Payload inválido.' }, 400);
 
-        const { query, locationName, latitude, longitude, radius, pageToken, provider } = body;
+        const { query, locationName, latitude, longitude, radius, pageToken, provider, googleApiKey } = body;
 
         const lat = parseFloat(latitude);
         const lng = parseFloat(longitude);
         const radiusMeters = Math.min(Math.max(parseInt(radius, 10) || 5000, 100), 50000);
         const sanitizedQuery = (query || '').trim().substring(0, 150);
+        const apiKey = googleApiKey || env.GOOGLE_PLACES_API_KEY;
 
-        // 1. If Google Places API Key is present in Worker secrets, call Google Places API (New)
-        if (env.GOOGLE_PLACES_API_KEY && provider !== 'osm') {
+        // 1. If Google Places API Key is present (from Worker secret or user Settings), call Google Places API (New)
+        if (apiKey && provider !== 'osm') {
           const googlePlacesUrl = 'https://places.googleapis.com/v1/places:searchText';
           const requestBody = {
             textQuery: `${sanitizedQuery} em ${locationName || ''}`.trim(),
@@ -390,7 +391,7 @@ export default {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-Goog-Api-Key': env.GOOGLE_PLACES_API_KEY,
+              'X-Goog-Api-Key': apiKey,
               'X-Goog-FieldMask': fieldMask
             },
             body: JSON.stringify(requestBody)
@@ -409,8 +410,13 @@ export default {
           }
         }
 
-        // 2. Free Real OpenStreetMap Overpass Search
-        const osmPlaces = await fetchOverpassPlaces(sanitizedQuery, lat, lng, radiusMeters);
+        // 2. Free Real OpenStreetMap Overpass Search (with automatic expanded radius if 0 places)
+        let osmPlaces = await fetchOverpassPlaces(sanitizedQuery, lat, lng, radiusMeters);
+        if (osmPlaces.length === 0 && radiusMeters < 15000) {
+          // Try expanding radius to capture regional businesses
+          osmPlaces = await fetchOverpassPlaces(sanitizedQuery, lat, lng, 15000);
+        }
+
         if (osmPlaces.length > 0) {
           return jsonResponse({
             places: osmPlaces,

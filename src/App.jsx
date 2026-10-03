@@ -119,7 +119,7 @@ export default function App() {
     activeAbortControllerRef.current = abortController;
 
     setIsLoading(true);
-    setSearchProgress(15);
+    setSearchProgress(10);
     setApiError(null);
     setActivePlace(null);
     setSelectedPlaces([]);
@@ -129,18 +129,19 @@ export default function App() {
     progressTimerRef.current = setInterval(() => {
       setSearchProgress(prev => {
         if (prev >= 85) return prev;
-        return prev + 15;
+        // Smooth gentle increment
+        const increment = prev < 50 ? 5 : 2;
+        return Math.min(prev + increment, 85);
       });
-    }, 400);
+    }, 250);
 
     try {
       let lat = customLat;
       let lng = customLng;
       let locName = searchLocation;
 
-      setSearchProgress(35);
-
       if (lat === null || lng === null) {
+        setSearchProgress(prev => Math.max(prev, 25));
         const geo = await geoService.geocode(searchLocation || 'Brasil', isDemoMode);
         lat = geo.lat;
         lng = geo.lng;
@@ -149,7 +150,7 @@ export default function App() {
 
       setCenterLat(lat);
       setCenterLng(lng);
-      setSearchProgress(65);
+      setSearchProgress(prev => Math.max(prev, 55));
 
       const res = await placesService.searchPlaces({
         query: searchQuery,
@@ -161,6 +162,7 @@ export default function App() {
         abortSignal: abortController.signal
       });
 
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
       setSearchProgress(100);
 
       if (res.error) {
@@ -173,9 +175,9 @@ export default function App() {
         setApiError(null);
 
         if ((res.places || []).length === 0) {
-          showToast(`Nenhum estabelecimento encontrado em ${locName}.`, 'info');
+          showToast(`Nenhum estabelecimento encontrado em ${locName}. Aumente o raio de busca.`, 'info');
         } else {
-          showToast(`${res.places.length} estabelecimentos reais carregados.`);
+          showToast(`${res.places.length} estabelecimentos carregados (${res.provider || 'Dados Reais'}).`);
         }
 
         // Save to history
@@ -189,16 +191,21 @@ export default function App() {
         });
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        setApiError({ message: err.message, code: 'SEARCH_ERROR' });
-        setPlaces([]);
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (err.name === 'AbortError') {
+        return;
       }
+      console.error('Search failure:', err);
+      setApiError({ message: err.message || 'Falha ao processar pesquisa.' });
+      showToast('Erro ao realizar busca.', 'error');
     } finally {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-      setIsLoading(false);
-      setTimeout(() => setSearchProgress(0), 400);
+      setTimeout(() => {
+        setIsLoading(false);
+        setSearchProgress(0);
+      }, 350);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, showToast]);
 
   // Real Pagination: Load Next Page from API
   const handleLoadMore = async () => {

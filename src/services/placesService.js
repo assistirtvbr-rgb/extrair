@@ -50,7 +50,8 @@ export const placesService = {
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radius: radiusMeters,
-      pageToken: pageToken || null
+      pageToken: pageToken || null,
+      googleApiKey: settings.googleApiKey || null
     };
 
     try {
