@@ -45,13 +45,15 @@ export default function SearchView({
   setIsFiltersOpen,
   searchInputRef
 }) {
+  const containerRef = useRef(null);
+
   // Resizable split ratio (percentage for list panel)
   const [splitPercent, setSplitPercent] = useState(() => {
     try {
       const saved = localStorage.getItem('leadmap_split_ratio');
-      return saved ? parseFloat(saved) : 42;
+      return saved ? parseFloat(saved) : 46;
     } catch {
-      return 42;
+      return 46;
     }
   });
 
@@ -65,12 +67,10 @@ export default function SearchView({
   };
 
   const handleMouseMove = useCallback((e) => {
-    if (!isDraggingRef.current) return;
-    const containerWidth = window.innerWidth;
-    const sidebarWidth = 64; // approximate
-    const availableWidth = containerWidth - sidebarWidth;
-    const clientX = e.clientX - sidebarWidth;
-    const newPercent = Math.min(Math.max((clientX / availableWidth) * 100, 25), 75);
+    if (!isDraggingRef.current || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clientX = e.clientX - rect.left;
+    const newPercent = Math.min(Math.max((clientX / rect.width) * 100, 25), 75);
     setSplitPercent(newPercent);
     localStorage.setItem('leadmap_split_ratio', newPercent.toFixed(1));
   }, []);
@@ -90,12 +90,9 @@ export default function SearchView({
   };
 
   return (
-    <div className={`content-split view-mode-${viewMode}`}>
-      {/* Left List Panel */}
-      <div 
-        className="split-list-panel" 
-        style={{ width: viewMode === 'split' ? `${splitPercent}%` : undefined }}
-      >
+    <div className="search-view-layout">
+      {/* 1. Full-Width Search Strip Above Results & Map */}
+      <div className="search-strip-wrapper">
         <SearchBar
           query={query}
           setQuery={setQuery}
@@ -112,83 +109,96 @@ export default function SearchView({
           isLoading={isLoading}
           searchInputRef={searchInputRef}
         />
+      </div>
 
-        <SearchSummary
-          places={places}
-          leadStore={leadStore}
+      {/* 2. Horizontal Insights Summary */}
+      <SearchSummary
+        places={places}
+        leadStore={leadStore}
+      />
+
+      {/* 3. Work Area: Resizable Split / List / Map / Table */}
+      <div 
+        ref={containerRef}
+        className={`content-split view-mode-${viewMode}`}
+      >
+        {/* Left List Panel */}
+        <div 
+          className="split-list-panel" 
+          style={{ width: viewMode === 'split' ? `${splitPercent}%` : undefined }}
+        >
+          <ResultsList
+            places={places}
+            isLoading={isLoading}
+            isLoadingMore={isLoadingMore}
+            apiError={apiError}
+            hasNextPage={hasNextPage}
+            onLoadMore={onLoadMore}
+            selectedPlaces={selectedPlaces}
+            setSelectedPlaces={setSelectedPlaces}
+            activePlace={activePlace}
+            setActivePlace={setActivePlace}
+            hoveredPlaceId={hoveredPlaceId}
+            setHoveredPlaceId={setHoveredPlaceId}
+            favorites={favorites}
+            onToggleFavorite={onToggleFavorite}
+            onOpenRadar={onOpenRadar}
+            viewMode={viewMode}
+            filters={filters}
+            leadStore={leadStore}
+            onOpenDetails={(place) => setActivePlace(place)}
+          />
+        </div>
+
+        {/* Resizable Divider for Split View */}
+        {viewMode === 'split' && (
+          <div
+            className="split-resizer"
+            onMouseDown={handleMouseDown}
+            onKeyDown={handleResizerKeyDown}
+            tabIndex={0}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Redimensionar painel de lista e mapa"
+          />
+        )}
+
+        {/* Right Map Panel */}
+        <div className="split-map-panel">
+          <MapView
+            places={places}
+            centerLat={centerLat}
+            centerLng={centerLng}
+            radiusKm={radiusKm}
+            activePlace={activePlace}
+            hoveredPlaceId={hoveredPlaceId}
+            onSelectPlace={(place) => setActivePlace(place)}
+            onHoverPlace={(id) => setHoveredPlaceId(id)}
+            radarPlace={radarPlace}
+            onMapClickExplore={(newLat, newLng) => {
+              onSearch(query, `${newLat.toFixed(4)}, ${newLng.toFixed(4)}`, radiusKm, newLat, newLng);
+            }}
+          />
+        </div>
+
+        {/* Floating Selection Bar */}
+        <SelectionBar
+          selectedCount={selectedPlaces.length}
+          onClearSelection={() => setSelectedPlaces([])}
+          onAddToList={onOpenSaveList}
+          onExport={onOpenExport}
+          onBatchEnrich={onOpenBatchEnrich}
         />
 
-        <ResultsList
-          places={places}
-          isLoading={isLoading}
-          isLoadingMore={isLoadingMore}
-          apiError={apiError}
-          hasNextPage={hasNextPage}
-          onLoadMore={onLoadMore}
-          selectedPlaces={selectedPlaces}
-          setSelectedPlaces={setSelectedPlaces}
-          activePlace={activePlace}
-          setActivePlace={setActivePlace}
-          hoveredPlaceId={hoveredPlaceId}
-          setHoveredPlaceId={setHoveredPlaceId}
-          favorites={favorites}
-          onToggleFavorite={onToggleFavorite}
-          onOpenRadar={onOpenRadar}
-          viewMode={viewMode}
+        {/* Filters Modal */}
+        <FiltersPanel
+          isOpen={isFiltersOpen}
+          onClose={() => setIsFiltersOpen(false)}
           filters={filters}
-          leadStore={leadStore}
-          onOpenDetails={(place) => setActivePlace(place)}
+          setFilters={setFilters}
+          onReset={onResetFilters}
         />
       </div>
-
-      {/* Resizable divider for split view */}
-      {viewMode === 'split' && (
-        <div
-          className="split-resizer"
-          onMouseDown={handleMouseDown}
-          onKeyDown={handleResizerKeyDown}
-          tabIndex={0}
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Redimensionar painel de lista e mapa"
-        />
-      )}
-
-      {/* Right Map Panel */}
-      <div className="split-map-panel">
-        <MapView
-          places={places}
-          centerLat={centerLat}
-          centerLng={centerLng}
-          radiusKm={radiusKm}
-          activePlace={activePlace}
-          hoveredPlaceId={hoveredPlaceId}
-          onSelectPlace={(place) => setActivePlace(place)}
-          onHoverPlace={(id) => setHoveredPlaceId(id)}
-          radarPlace={radarPlace}
-          onMapClickExplore={(newLat, newLng) => {
-            onSearch(query, `${newLat.toFixed(4)}, ${newLng.toFixed(4)}`, radiusKm, newLat, newLng);
-          }}
-        />
-      </div>
-
-      {/* Floating Selection Bar */}
-      <SelectionBar
-        selectedCount={selectedPlaces.length}
-        onClearSelection={() => setSelectedPlaces([])}
-        onAddToList={onOpenSaveList}
-        onExport={onOpenExport}
-        onBatchEnrich={onOpenBatchEnrich}
-      />
-
-      {/* Filters Modal / Popover */}
-      <FiltersPanel
-        isOpen={isFiltersOpen}
-        onClose={() => setIsFiltersOpen(false)}
-        filters={filters}
-        setFilters={setFilters}
-        onReset={onResetFilters}
-      />
     </div>
   );
 }

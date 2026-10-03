@@ -4,13 +4,11 @@ import {
   ShieldCheck, 
   Database, 
   Save, 
-  RotateCcw, 
   Check, 
   Download, 
   Upload, 
   Server, 
-  Sparkles,
-  AlertTriangle
+  Sparkles
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 
@@ -65,30 +63,30 @@ export default function SettingsView({ onDataReset, isDemoMode, onToggleDemoMode
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '20px' }}>
-      <div style={{ maxWidth: '760px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '24px' }}>
+      <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
         {/* Mode Selector Card */}
-        <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
-          <div className="filters-panel-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={16} color="var(--green-dark)" />
-              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Modo de Operação</h2>
+        <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Sparkles size={18} color="var(--brand-primary)" />
+              <h2 style={{ fontSize: '15px', fontWeight: '800' }}>Modo de Operação</h2>
             </div>
-            <span className={`badge ${isDemoMode ? 'badge-lime' : 'badge-green'}`}>
-              {isDemoMode ? 'Modo Demonstração' : 'Google Places Live'}
+            <span className={`badge ${isDemoMode ? 'badge-brand' : 'badge-success'}`}>
+              {isDemoMode ? 'Modo Demonstração' : 'Modo Produção Live'}
             </span>
           </div>
 
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Alterne entre o <strong>Modo Demonstração</strong> (dados brasileiros de alta fidelidade sem gastar cota) e o <strong>Modo Live Google Places</strong> (requisições reais ao Cloudflare Worker).
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Alterne entre o <strong>Modo Demonstração</strong> (dados brasileiros com alta fidelidade sem necessidade de chaves) e o <strong>Modo Produção Live</strong> (OpenStreetMap Overpass API + Google Places API via Cloudflare Worker).
             </p>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                className={`btn ${isDemoMode ? 'btn-lime' : 'btn-secondary'} btn-sm`}
+                className={`btn ${isDemoMode ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                 onClick={() => onToggleDemoMode(true)}
               >
                 Ativar Modo Demonstração (Grátis / Offline)
@@ -98,81 +96,83 @@ export default function SettingsView({ onDataReset, isDemoMode, onToggleDemoMode
                 className={`btn ${!isDemoMode ? 'btn-primary' : 'btn-secondary'} btn-sm`}
                 onClick={() => onToggleDemoMode(false)}
               >
-                Ativar Modo Google Places (Live Worker)
+                Ativar Modo Live (OpenStreetMap / Google Places)
               </button>
             </div>
           </div>
         </div>
 
         {/* Backend & Cloudflare Worker Endpoint Card */}
-        <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
-          <div className="filters-panel-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Server size={16} color="var(--green-dark)" />
-              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Endpoint Cloudflare Worker</h2>
+        <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Server size={18} color="var(--brand-primary)" />
+              <h2 style={{ fontSize: '15px', fontWeight: '800' }}>Endpoint Cloudflare Worker</h2>
             </div>
-            <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ShieldCheck size={12} /> Proxy Seguro
+            <span className="badge badge-success" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ShieldCheck size={13} /> Proxy Seguro
             </span>
           </div>
 
-          <form onSubmit={handleSave} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="filter-group">
-              <label className="filter-label">URL do Endpoint de Busca</label>
+          <form onSubmit={handleSave} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                URL do Endpoint da API
+              </label>
               <input
                 type="text"
                 value={settings.workerApiUrl}
                 onChange={(e) => setSettings({ ...settings, workerApiUrl: e.target.value })}
-                placeholder="/api/search ou https://extrair.rogerin.workers.dev/api/search"
-                style={{ padding: '8px 10px' }}
+                placeholder="/api/search"
+                style={{ width: '100%', height: '42px', padding: '0 12px' }}
                 required
               />
-              <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-                Todas as chamadas à Google Places API passam pelo Worker para não expor a chave de API no navegador.
+              <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Todas as consultas passam pelo Worker para manter as chaves seguras e permitir scraping com proteção SSRF.
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button type="submit" className="btn btn-primary btn-sm">
-                {saved ? <Check size={13} /> : <Save size={13} />}
-                {saved ? 'Configurações Salvas!' : 'Salvar Parâmetros'}
+                {saved ? <Check size={14} /> : <Save size={14} />}
+                <span>{saved ? 'Configurações Salvas!' : 'Salvar Alterações'}</span>
               </button>
             </div>
           </form>
         </div>
 
         {/* Backup & Restore JSON Card */}
-        <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
-          <div className="filters-panel-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database size={16} color="var(--green-dark)" />
-              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Backup & Restauração Completa de Dados</h2>
-            </div>
+        <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Database size={18} color="var(--brand-primary)" />
+            <h2 style={{ fontSize: '15px', fontWeight: '800' }}>Backup e Armazenamento Local</h2>
           </div>
 
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-              Exporte seus leads, pipeline, notas, tags e listas em um arquivo JSON seguro ou cole o conteúdo de um backup anterior para restaurar.
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Exporte seus leads, pipeline, notas comerciais, tags e listas salvas em um arquivo JSON seguro ou cole um backup anterior para restaurar.
             </p>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownloadBackup}>
-                <Download size={13} />
-                Baixar Arquivo de Backup (.json)
+                <Download size={14} />
+                <span>Baixar Arquivo de Backup (.json)</span>
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-              <label className="filter-label">Restaurar de arquivo JSON</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-secondary)' }}>
+                Restaurar Backup a partir de JSON
+              </label>
               <textarea
                 value={backupJson}
                 onChange={(e) => setBackupJson(e.target.value)}
-                placeholder="Cole o código JSON do backup aqui para restaurar..."
-                style={{ minHeight: '70px', padding: '6px 8px', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}
+                placeholder="Cole o código JSON do backup aqui..."
+                style={{ minHeight: '80px', padding: '10px 12px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
               />
 
               {importStatus && (
-                <div style={{ fontSize: '12px', color: importStatus.success ? 'var(--green-dark)' : 'var(--terracotta)', fontWeight: '600' }}>
+                <div style={{ fontSize: '13px', color: importStatus.success ? 'var(--color-success)' : 'var(--color-alert)', fontWeight: '700' }}>
                   {importStatus.message}
                 </div>
               )}
@@ -184,16 +184,16 @@ export default function SettingsView({ onDataReset, isDemoMode, onToggleDemoMode
                 disabled={!backupJson.trim()}
                 style={{ width: 'fit-content' }}
               >
-                <Upload size={13} />
-                Restaurar Backup
+                <Upload size={14} />
+                <span>Restaurar Dados</span>
               </button>
             </div>
 
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', display: 'flex', gap: '8px' }}>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearHistory} style={{ color: 'var(--text-secondary)' }}>
-                Limpar Histórico
+                Limpar Histórico de Busca
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ color: 'var(--terracotta)' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ color: 'var(--color-alert)' }}>
                 Apagar Todos os Dados Locais
               </button>
             </div>

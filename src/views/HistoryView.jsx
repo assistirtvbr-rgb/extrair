@@ -19,16 +19,16 @@ export default function HistoryView({
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: 'var(--bg-main)' }}>
       <div style={{ padding: '16px 24px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: '16px', fontWeight: '700' }}>Histórico de Consultas</h2>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Clique em qualquer consulta para executá-la novamente instantaneamente
+          <h2 style={{ fontSize: '18px', fontWeight: '800' }}>Histórico de Consultas</h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            Clique em qualquer consulta anterior para reexecutá-la instantaneamente
           </p>
         </div>
 
         {history.length > 0 && (
-          <button className="btn btn-ghost btn-sm" onClick={handleClear} style={{ color: 'var(--alert-color)' }}>
+          <button className="btn btn-ghost btn-sm" onClick={handleClear} style={{ color: 'var(--color-alert)' }}>
             <Trash2 size={14} />
-            Limpar histórico
+            <span>Limpar Histórico</span>
           </button>
         )}
       </div>
@@ -63,15 +63,15 @@ export default function HistoryView({
                   onClick={() => onReplaySearch(item.query, item.locationName, item.radiusKm, item.lat, item.lng)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <td style={{ fontWeight: '600', color: 'var(--green-dark)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Search size={14} color="var(--green-accent)" />
+                  <td style={{ fontWeight: '700', color: 'var(--brand-primary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Search size={14} color="var(--brand-primary)" />
                       {item.query}
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPin size={13} color="var(--text-secondary)" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MapPin size={14} color="var(--text-secondary)" />
                       {item.locationName}
                     </div>
                   </td>
@@ -79,21 +79,22 @@ export default function HistoryView({
                     <span className="badge badge-neutral">{item.radiusKm} km</span>
                   </td>
                   <td>
-                    <span className="badge badge-green">{item.resultsCount} empresas</span>
+                    <span className="badge badge-brand">{item.resultsCount} empresas</span>
                   </td>
-                  <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <td style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                     {formatDate(item.createdAt)}
                   </td>
                   <td>
                     <button
+                      type="button"
                       className="btn btn-primary btn-sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         onReplaySearch(item.query, item.locationName, item.radiusKm, item.lat, item.lng);
                       }}
-                      style={{ padding: '3px 8px', fontSize: '11px' }}
+                      style={{ padding: '4px 10px', fontSize: '12px' }}
                     >
-                      <Play size={11} /> Executar
+                      <Play size={12} /> <span>Repetir</span>
                     </button>
                   </td>
                 </tr>

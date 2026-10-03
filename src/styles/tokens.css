@@ -1,79 +1,94 @@
 :root {
-  /* Core Color Palette - Mineral, Graphite, Forest Green, Soft Lime & Terracotta */
-  --bg-main: #F3F2EE;
+  /* ==========================================================================
+     LeadMap Contemporary Design System Tokens
+     ========================================================================== */
+
+  /* Backgrounds & Surfaces */
+  --bg-main: #F5F6F8;
   --bg-panel: #FFFFFF;
-  --bg-subtle: #F7F7F4;
-  --bg-hover: #ECECE7;
-  --bg-active: #E3E4DC;
-  
-  --text-primary: #202622;
-  --text-secondary: #616963;
-  --text-muted: #8D9690;
+  --bg-subtle: #F8FAFC;
+  --bg-hover: #F1F5F9;
+  --bg-active: #E2E8F0;
+
+  /* Navigation / Dark Contrast Surfaces */
+  --bg-nav: #181C23;
+  --bg-nav-hover: rgba(255, 255, 255, 0.08);
+  --bg-nav-active: rgba(82, 98, 245, 0.16);
+
+  /* Typography Colors */
+  --text-primary: #20242C;
+  --text-secondary: #626B79;
+  --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
-  
-  /* Brand Green (Deep Forest) */
-  --green-dark: #173F35;
-  --green-dark-hover: #102B24;
-  --green-accent: #1F5447;
-  --green-subtle: #E8EFEA;
-  
-  /* Soft Lime (Selection, Highlights & Tiers) */
-  --lime-accent: #D6EC91;
-  --lime-hover: #C5DF78;
-  --lime-subtle: #F2F8DE;
-  --lime-dark: #3F520E;
-  
-  /* Terracotta (Alerts, Overdue, Competitor Opportunities) */
-  --terracotta: #C85A32;
-  --terracotta-hover: #B24E29;
-  --terracotta-subtle: #FCECE7;
-  --terracotta-text: #963816;
-  
+
+  /* Primary Brand & Actions (Electric Blue) */
+  --brand-primary: #5262F5;
+  --brand-hover: #4150E6;
+  --brand-subtle: #EEF0FF;
+  --brand-border: #D0D7FF;
+
+  /* Success & Commercial Channels (Emerald) */
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-subtle: #ECFDF5;
+  --color-success-text: #047857;
+
+  /* Attention & Ratings (Amber) */
+  --color-warning: #F59E0B;
+  --color-warning-subtle: #FEF3C7;
+  --color-warning-text: #B45309;
+
+  /* Alerts & Loss (Rose / Terracotta) */
+  --color-alert: #E11D48;
+  --color-alert-subtle: #FFE4E6;
+  --color-alert-text: #BE123C;
+
   /* Borders & Dividers */
-  --border-color: #DADCD7;
-  --border-subtle: #E7E9E4;
-  --border-focus: #173F35;
-  
-  /* Status Colors */
-  --status-novo: #616963;
-  --status-pesquisar: #2B617E;
-  --status-futuro: #8F6013;
-  --status-realizado: #20539E;
-  --status-interessado: #173F35;
-  --status-seminteresse: #A13333;
-  --status-cliente: #2E6B34;
-  
+  --border-color: #E3E7ED;
+  --border-subtle: #EEF2F6;
+  --border-focus: #5262F5;
+
+  /* Pipeline Statuses */
+  --status-novo: #64748B;
+  --status-pesquisar: #0284C7;
+  --status-futuro: #D97706;
+  --status-realizado: #5262F5;
+  --status-interessado: #10B981;
+  --status-seminteresse: #E11D48;
+  --status-cliente: #059669;
+
   /* Typography */
-  --font-heading: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-interface: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
-  
+  --font-heading: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-interface: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+
   /* Radii */
   --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 9999px;
-  
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(32, 38, 34, 0.04);
-  --shadow-sm: 0 1px 3px rgba(32, 38, 34, 0.06), 0 1px 2px rgba(32, 38, 34, 0.03);
-  --shadow-md: 0 4px 6px -1px rgba(32, 38, 34, 0.07), 0 2px 4px -1px rgba(32, 38, 34, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(32, 38, 34, 0.08), 0 4px 6px -2px rgba(32, 38, 34, 0.03);
-  --shadow-xl: 0 20px 25px -5px rgba(32, 38, 34, 0.1), 0 10px 10px -5px rgba(32, 38, 34, 0.04);
-  
+
+  /* Elevation & Shadows */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+
   /* Transitions */
-  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 160ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Layout Sizing */
-  --sidebar-width-expanded: 210px;
-  --sidebar-width-compact: 64px;
-  --topbar-height: 56px;
+  --transition-fast: 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 240ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout Measurements */
+  --sidebar-width-expanded: 220px;
+  --sidebar-width-compact: 76px;
+  --topbar-height: 72px;
   --z-sidebar: 40;
   --z-topbar: 30;
+  --z-popover: 60;
   --z-modal: 100;
-  --z-popover: 50;
   --z-toast: 110;
 }

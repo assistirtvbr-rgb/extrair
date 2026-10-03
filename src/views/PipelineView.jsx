@@ -1,28 +1,22 @@
 import React, { useState } from 'react';
 import { 
-  FolderKanban, 
-  Plus, 
   Calendar, 
   Phone, 
   MessageCircle, 
-  AlertCircle, 
-  CheckCircle, 
   Search, 
-  SlidersHorizontal,
-  ChevronRight,
   Sparkles
 } from 'lucide-react';
 import LeadScoreBadge from '../components/LeadScoreBadge';
 import { formatPhone, getCategoryLabel } from '../utils/formatter';
 
 const STAGES = [
-  { key: 'Novo', label: 'Novo Lead', color: '#616963' },
-  { key: 'Pesquisar', label: 'Pesquisar', color: '#2B617E' },
-  { key: 'Contato futuro', label: 'Contato Futuro', color: '#8F6013' },
-  { key: 'Contato realizado', label: 'Contato Realizado', color: '#20539E' },
-  { key: 'Interessado', label: 'Interessado', color: '#173F35' },
-  { key: 'Sem interesse', label: 'Sem Interesse', color: '#A13333' },
-  { key: 'Cliente', label: 'Cliente', color: '#2E6B34' }
+  { key: 'Novo', label: 'Novo Lead', color: '#64748B' },
+  { key: 'Pesquisar', label: 'Pesquisar', color: '#0284C7' },
+  { key: 'Contato futuro', label: 'Contato Futuro', color: '#D97706' },
+  { key: 'Contato realizado', label: 'Contato Realizado', color: '#5262F5' },
+  { key: 'Interessado', label: 'Interessado', color: '#10B981' },
+  { key: 'Sem interesse', label: 'Sem Interesse', color: '#E11D48' },
+  { key: 'Cliente', label: 'Cliente Ativo', color: '#059669' }
 ];
 
 export default function PipelineView({
@@ -30,7 +24,7 @@ export default function PipelineView({
   onUpdateLead,
   onOpenDetails
 }) {
-  const [filterType, setFilterType] = useState('ALL'); // 'ALL' | 'TODAY' | 'OVERDUE' | 'NO_ACTION' | 'INTERESTED' | 'UNCONTACTED'
+  const [filterType, setFilterType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [draggedPlaceId, setDraggedPlaceId] = useState(null);
 
@@ -101,46 +95,51 @@ export default function PipelineView({
     <div className="pipeline-container">
       {/* Pipeline Toolbar */}
       <div className="pipeline-toolbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div className="results-filter-inline" style={{ width: '220px' }}>
-            <Search size={13} className="search-icon" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="results-filter-inline" style={{ width: '240px' }}>
+            <Search size={14} className="search-icon" />
             <input
               type="text"
-              placeholder="Buscar no pipeline..."
+              placeholder="Buscar empresas no pipeline..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           {/* Quick Filters */}
-          <div className="radius-selector">
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button
-              className={`radius-chip ${filterType === 'ALL' ? 'active' : ''}`}
+              type="button"
+              className={`btn btn-secondary btn-sm ${filterType === 'ALL' ? 'active' : ''}`}
               onClick={() => setFilterType('ALL')}
             >
               Todos ({allLeadsList.length})
             </button>
             <button
-              className={`radius-chip ${filterType === 'TODAY' ? 'active' : ''}`}
+              type="button"
+              className={`btn btn-secondary btn-sm ${filterType === 'TODAY' ? 'active' : ''}`}
               onClick={() => setFilterType('TODAY')}
             >
-              Retornos de Hoje
+              Retornos Hoje
             </button>
             <button
-              className={`radius-chip ${filterType === 'OVERDUE' ? 'active' : ''}`}
+              type="button"
+              className={`btn btn-secondary btn-sm ${filterType === 'OVERDUE' ? 'active' : ''}`}
               onClick={() => setFilterType('OVERDUE')}
-              style={{ color: filterType === 'OVERDUE' ? 'var(--terracotta)' : undefined }}
+              style={{ color: filterType === 'OVERDUE' ? 'var(--color-alert)' : undefined }}
             >
               Atrasados
             </button>
             <button
-              className={`radius-chip ${filterType === 'NO_ACTION' ? 'active' : ''}`}
+              type="button"
+              className={`btn btn-secondary btn-sm ${filterType === 'NO_ACTION' ? 'active' : ''}`}
               onClick={() => setFilterType('NO_ACTION')}
             >
               Sem Próxima Ação
             </button>
             <button
-              className={`radius-chip ${filterType === 'INTERESTED' ? 'active' : ''}`}
+              type="button"
+              className={`btn btn-secondary btn-sm ${filterType === 'INTERESTED' ? 'active' : ''}`}
               onClick={() => setFilterType('INTERESTED')}
             >
               Interessados
@@ -148,8 +147,8 @@ export default function PipelineView({
           </div>
         </div>
 
-        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Arraste os cards entre as colunas ou use o menu da ficha comercial.
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Arraste os cards entre as colunas para atualizar a etapa comercial.
         </span>
       </div>
 
@@ -165,7 +164,7 @@ export default function PipelineView({
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage.key)}
             >
-              <div className="kanban-col-header" style={{ borderTop: `3px solid ${stage.color}` }}>
+              <div className="kanban-col-header" style={{ borderTop: `3.5px solid ${stage.color}` }}>
                 <span style={{ color: stage.color }}>{stage.label}</span>
                 <span className="badge badge-neutral tnum">{stageLeads.length}</span>
               </div>
@@ -188,20 +187,20 @@ export default function PipelineView({
                       onClick={() => onOpenDetails(place)}
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px' }}>
-                        <span style={{ fontWeight: '600', fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.3' }}>
+                        <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.3' }}>
                           {name}
                         </span>
                         <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={lead} />
                       </div>
 
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {getCategoryLabel(category)}
                       </div>
 
                       {/* Next Action reminder */}
                       {lead.nextAction && (
-                        <div style={{ fontSize: '11px', color: isOverdue ? 'var(--terracotta)' : 'var(--green-dark)', background: isOverdue ? 'var(--terracotta-subtle)' : 'var(--green-subtle)', padding: '2px 5px', borderRadius: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Calendar size={11} />
+                        <div style={{ fontSize: '11.5px', color: isOverdue ? 'var(--color-alert)' : 'var(--brand-primary)', background: isOverdue ? 'var(--color-alert-subtle)' : 'var(--brand-subtle)', padding: '3px 6px', borderRadius: 'var(--radius-xs)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar size={12} />
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {lead.nextAction} {lead.returnDate ? `(${lead.returnDate})` : ''}
                           </span>
@@ -209,16 +208,16 @@ export default function PipelineView({
                       )}
 
                       {/* Quick Contact buttons */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px', borderTop: '1px solid var(--border-subtle)', paddingTop: '4px' }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
                           {phone && (
                             <a
                               href={`tel:${phone}`}
                               className="btn-icon"
-                              style={{ padding: '2px 4px', fontSize: '11px', color: 'var(--text-secondary)' }}
+                              style={{ padding: '3px 6px', fontSize: '12px', color: 'var(--text-secondary)' }}
                               title={`Ligar: ${formatPhone(phone)}`}
                             >
-                              <Phone size={11} />
+                              <Phone size={12} />
                             </a>
                           )}
                           {dp.whatsapp?.url && (
@@ -227,10 +226,10 @@ export default function PipelineView({
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn-icon"
-                              style={{ padding: '2px 4px', fontSize: '11px', color: '#128C7E' }}
+                              style={{ padding: '3px 6px', fontSize: '12px', color: '#059669' }}
                               title="Abrir WhatsApp"
                             >
-                              <MessageCircle size={11} />
+                              <MessageCircle size={12} />
                             </a>
                           )}
                         </div>
@@ -239,7 +238,7 @@ export default function PipelineView({
                         <select
                           value={lead.status || 'Novo'}
                           onChange={(e) => onUpdateLead(placeId, { status: e.target.value })}
-                          style={{ fontSize: '10.5px', padding: '1px 4px' }}
+                          style={{ fontSize: '11px', padding: '2px 6px' }}
                         >
                           {STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                         </select>
@@ -249,8 +248,8 @@ export default function PipelineView({
                 })}
 
                 {stageLeads.length === 0 && (
-                  <div style={{ padding: '24px 8px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
-                    Arraste leads para cá
+                  <div style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12.5px', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                    Nenhum lead nesta etapa
                   </div>
                 )}
               </div>

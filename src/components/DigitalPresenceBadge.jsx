@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Instagram, MessageCircle, Linkedin, Facebook, Mail, ExternalLink, HelpCircle } from 'lucide-react';
+import { Globe, Instagram, MessageCircle, Linkedin, Facebook, Mail, Check } from 'lucide-react';
 import { extractCleanDomain } from '../utils/domain';
 
 export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl = null, onOpenDetails = null }) {
@@ -11,8 +11,8 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
 
   if (!hasAnyChannel) {
     return (
-      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-        Canais não pesquisados
+      <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+        Canais não identificados
       </span>
     );
   }
@@ -26,10 +26,11 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           target="_blank"
           rel="noopener noreferrer"
           className="social-pill-badge active-web"
-          title={`Website: ${web}`}
+          title={`Website Institucional: ${web}`}
+          aria-label="Abrir website institucional"
         >
-          <Globe size={11} />
-          <span>{cleanWeb}</span>
+          <Globe size={12} />
+          <span>{cleanWeb || 'Website'}</span>
         </a>
       )}
 
@@ -40,10 +41,12 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           target="_blank"
           rel="noopener noreferrer"
           className="social-pill-badge active-wa"
-          title={`WhatsApp: ${dp.whatsapp.handle || dp.whatsapp.url}`}
+          title={`WhatsApp: ${dp.whatsapp.handle || 'Conversar no WhatsApp'}`}
+          aria-label="Abrir conversa no WhatsApp"
         >
-          <MessageCircle size={11} />
+          <MessageCircle size={12} />
           <span>WhatsApp</span>
+          {dp.whatsapp.status === 'Confirmado pelo usuário' && <Check size={10} />}
         </a>
       )}
 
@@ -55,9 +58,11 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           rel="noopener noreferrer"
           className="social-pill-badge active-ig"
           title={`Instagram: ${dp.instagram.handle || dp.instagram.url}`}
+          aria-label="Abrir perfil no Instagram"
         >
-          <Instagram size={11} />
+          <Instagram size={12} />
           <span>{dp.instagram.handle || 'Instagram'}</span>
+          {dp.instagram.status === 'Confirmado pelo usuário' && <Check size={10} />}
         </a>
       )}
 
@@ -67,10 +72,11 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           href={dp.linkedin.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="social-pill-badge"
-          title={`LinkedIn: ${dp.linkedin.handle || dp.linkedin.url}`}
+          className="social-pill-badge active-li"
+          title={`LinkedIn: ${dp.linkedin.handle || 'Perfil Corporativo'}`}
+          aria-label="Abrir LinkedIn"
         >
-          <Linkedin size={11} />
+          <Linkedin size={12} />
           <span>LinkedIn</span>
         </a>
       )}
@@ -82,9 +88,10 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           target="_blank"
           rel="noopener noreferrer"
           className="social-pill-badge"
-          title={`Facebook: ${dp.facebook.handle || dp.facebook.url}`}
+          title={`Facebook: ${dp.facebook.handle || 'Página do Facebook'}`}
+          aria-label="Abrir Facebook"
         >
-          <Facebook size={11} />
+          <Facebook size={12} color="#1877F2" />
         </a>
       )}
 
@@ -94,8 +101,9 @@ export default function DigitalPresenceBadge({ digitalPresence = {}, websiteUrl 
           href={`mailto:${dp.email.address}`}
           className="social-pill-badge"
           title={`E-mail: ${dp.email.address}`}
+          aria-label={`Enviar e-mail para ${dp.email.address}`}
         >
-          <Mail size={11} />
+          <Mail size={12} />
           <span>{dp.email.address}</span>
         </a>
       )}

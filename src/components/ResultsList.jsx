@@ -4,24 +4,17 @@ import {
   MapPinOff, 
   CheckSquare, 
   Square, 
-  ExternalLink,
-  Phone,
-  Globe,
-  Star,
-  Bookmark,
-  Radar as RadarIcon,
-  Loader2,
+  Bookmark, 
+  Radar as RadarIcon, 
+  Loader2, 
   AlertTriangle,
-  Sparkles,
-  ChevronDown
+  Star
 } from 'lucide-react';
 import ResultRow from './ResultRow';
 import DigitalPresenceBadge from './DigitalPresenceBadge';
 import LeadScoreBadge from './LeadScoreBadge';
-import { extractCleanDomain } from '../utils/domain';
 import { formatPhone, getCategoryLabel } from '../utils/formatter';
 import { formatDistance } from '../utils/distance';
-import { calculateLeadScore } from '../utils/scoring';
 
 export default function ResultsList({
   places = [],
@@ -39,18 +32,17 @@ export default function ResultsList({
   favorites = [],
   onToggleFavorite,
   onOpenRadar,
-  viewMode = 'split', // 'split' | 'list' | 'map' | 'table'
+  viewMode = 'split',
   filters = {},
   leadStore = {},
   onOpenDetails
 }) {
   const [internalFilter, setInternalFilter] = useState('');
 
-  // Filter & sort loaded items locally
+  // Local filter & sorting
   const processedPlaces = useMemo(() => {
     let result = [...places];
 
-    // Filter by internal search input
     if (internalFilter.trim()) {
       const term = internalFilter.toLowerCase().trim();
       result = result.filter(p => {
@@ -62,7 +54,6 @@ export default function ResultsList({
       });
     }
 
-    // Apply active filters
     if (filters.minRating > 0) {
       result = result.filter(p => p.rating && p.rating >= filters.minRating);
     }
@@ -95,19 +86,8 @@ export default function ResultsList({
       result = result.filter(p => p.currentOpeningHours?.openNow === true);
     }
 
-    // Sorting
     const sort = filters.sortBy || 'distance';
     result.sort((a, b) => {
-      const idA = a.id || a.place_id;
-      const idB = b.id || b.place_id;
-      const leadA = leadStore[idA] || {};
-      const leadB = leadStore[idB] || {};
-
-      if (sort === 'score') {
-        const scoreA = calculateLeadScore(a, leadA).totalScore;
-        const scoreB = calculateLeadScore(b, leadB).totalScore;
-        return scoreB - scoreA;
-      }
       if (sort === 'rating') {
         return (b.rating || 0) - (a.rating || 0);
       }
@@ -167,9 +147,9 @@ export default function ResultsList({
       <div className="results-scroll-container">
         {[1, 2, 3, 4, 5, 6].map(i => (
           <div key={i} className="skeleton-row">
-            <div className="skeleton-box" style={{ width: '55%', height: '15px' }} />
-            <div className="skeleton-box" style={{ width: '80%', height: '12px' }} />
-            <div className="skeleton-box" style={{ width: '45%', height: '11px' }} />
+            <div className="skeleton-box" style={{ width: '45%', height: '18px' }} />
+            <div className="skeleton-box" style={{ width: '75%', height: '14px' }} />
+            <div className="skeleton-box" style={{ width: '35%', height: '12px' }} />
           </div>
         ))}
       </div>
@@ -180,14 +160,14 @@ export default function ResultsList({
   if (apiError) {
     return (
       <div className="empty-state-container">
-        <div className="empty-state-icon" style={{ background: 'var(--terracotta-subtle)', color: 'var(--terracotta)' }}>
-          <AlertTriangle size={24} />
+        <div className="empty-state-icon" style={{ background: 'var(--color-alert-subtle)', color: 'var(--color-alert)' }}>
+          <AlertTriangle size={26} />
         </div>
-        <h3 className="empty-state-title" style={{ color: 'var(--terracotta)' }}>Erro na Consulta da API</h3>
+        <h3 className="empty-state-title" style={{ color: 'var(--color-alert)' }}>Erro na Busca</h3>
         <p className="empty-state-desc">
           {apiError.message}
           {apiError.hint && (
-            <span style={{ display: 'block', marginTop: '6px', fontSize: '12px', color: 'var(--text-primary)' }}>
+            <span style={{ display: 'block', marginTop: '8px', fontSize: '13px', color: 'var(--text-primary)' }}>
               💡 <strong>Dica:</strong> {apiError.hint}
             </span>
           )}
@@ -201,13 +181,13 @@ export default function ResultsList({
     return (
       <div className="empty-state-container">
         <div className="empty-state-icon">
-          <MapPinOff size={24} />
+          <MapPinOff size={26} />
         </div>
         <h3 className="empty-state-title">Nenhum estabelecimento encontrado</h3>
         <p className="empty-state-desc">
-          Não encontramos resultados para esta busca dentro do raio solicitado.
+          Não encontramos empresas para esta busca dentro do raio solicitado.
           <br />
-          <strong>Sugestão:</strong> Aumente o raio de pesquisa ou experimente termos mais amplos (ex: <em>"odontologia"</em> ou <em>"academia"</em>).
+          <strong>Sugestão:</strong> Ajuste o raio de pesquisa ou experimente outro termo (ex: <em>"odontologia"</em> ou <em>"academia"</em>).
         </p>
       </div>
     );
@@ -217,26 +197,26 @@ export default function ResultsList({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* List Toolbar */}
       <div className="results-toolbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button 
             type="button" 
             onClick={handleSelectAll} 
             className="btn-ghost" 
-            style={{ padding: '2px', display: 'flex', alignItems: 'center' }}
-            title={isAllSelected ? "Desmarcar todos" : "Selecionar todos os resultados"}
+            style={{ padding: '4px', display: 'flex', alignItems: 'center' }}
+            title={isAllSelected ? "Desmarcar todos" : "Selecionar todos os resultados visíveis"}
           >
-            {isAllSelected ? <CheckSquare size={16} color="var(--green-dark)" /> : <Square size={16} />}
+            {isAllSelected ? <CheckSquare size={18} color="var(--brand-primary)" /> : <Square size={18} color="var(--text-muted)" />}
           </button>
-          <span style={{ fontSize: '12.5px', fontWeight: '600' }} className="tnum">
+          <span style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-primary)' }} className="tnum">
             {processedPlaces.length} {processedPlaces.length === 1 ? 'empresa' : 'empresas'}
           </span>
         </div>
 
-        <div className="results-filter-inline" style={{ width: '180px' }}>
-          <Search size={13} className="search-icon" />
+        <div className="results-filter-inline" style={{ width: '210px' }}>
+          <Search size={14} className="search-icon" />
           <input
             type="text"
-            placeholder="Filtrar resultados..."
+            placeholder="Filtrar por nome..."
             value={internalFilter}
             onChange={(e) => setInternalFilter(e.target.value)}
           />
@@ -270,24 +250,23 @@ export default function ResultsList({
             );
           })}
 
-          {/* Real Pagination "Carregar Mais" button */}
+          {/* Pagination Load More Button */}
           {hasNextPage && (
-            <div style={{ padding: '14px 18px', textAlign: 'center', background: 'var(--bg-main)' }}>
+            <div style={{ padding: '16px 20px', textAlign: 'center', background: 'var(--bg-main)' }}>
               <button
-                className="btn btn-secondary btn-sm"
+                type="button"
+                className="btn btn-secondary"
                 onClick={onLoadMore}
                 disabled={isLoadingMore}
-                style={{ width: '100%' }}
+                style={{ width: '100%', height: '42px', fontWeight: '600' }}
               >
                 {isLoadingMore ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" />
-                    Carregando próxima página do Google Places...
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Carregando mais resultados...</span>
                   </>
                 ) : (
-                  <>
-                    Carregar mais estabelecimentos da região
-                  </>
+                  <span>Carregar mais empresas da região</span>
                 )}
               </button>
             </div>
@@ -299,17 +278,18 @@ export default function ResultsList({
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '30px' }}>
+                <th style={{ width: '36px' }}>
                   <input
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={handleSelectAll}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--brand-primary)' }}
                   />
                 </th>
                 <th>Empresa</th>
                 <th>Score</th>
                 <th>Categoria</th>
-                <th>Presença Digital / Redes</th>
+                <th>Presença Digital</th>
                 <th>Telefone</th>
                 <th>Avaliação</th>
                 <th>Distância</th>
@@ -343,9 +323,10 @@ export default function ResultsList({
                         type="checkbox"
                         checked={isSelected}
                         onChange={(e) => handleToggleSelectOne(place, e.target.checked)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--brand-primary)' }}
                       />
                     </td>
-                    <td style={{ fontWeight: '600' }}>{name}</td>
+                    <td style={{ fontWeight: '700' }}>{name}</td>
                     <td>
                       <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={leadData} />
                     </td>
@@ -358,31 +339,33 @@ export default function ResultsList({
                     <td>{phone ? formatPhone(phone) : '—'}</td>
                     <td>
                       {place.rating ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
-                          <Star size={11} style={{ color: '#EAB308', fill: '#EAB308' }} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '700' }}>
+                          <Star size={12} style={{ color: 'var(--color-warning)', fill: 'var(--color-warning)' }} />
                           <span className="tnum">{place.rating}</span> ({place.userRatingCount || 0})
                         </span>
                       ) : '—'}
                     </td>
                     <td className="tnum">{formatDistance(place.distanceKm)}</td>
                     <td>
-                      <span className="badge badge-green">{leadData.status || 'Novo'}</span>
+                      <span className="badge badge-brand">{leadData.status || 'Novo'}</span>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
+                          type="button"
                           className="btn-icon"
                           onClick={() => onToggleFavorite(place)}
-                          style={{ color: isFav(placeId) ? '#EAB308' : 'var(--text-muted)' }}
+                          style={{ color: isFav(placeId) ? 'var(--color-warning)' : 'var(--text-muted)' }}
                         >
-                          <Bookmark size={14} fill={isFav(placeId) ? '#EAB308' : 'none'} />
+                          <Bookmark size={15} fill={isFav(placeId) ? 'var(--color-warning)' : 'none'} />
                         </button>
                         <button
+                          type="button"
                           className="btn-icon"
                           onClick={() => onOpenRadar(place)}
                           title="Radar de concorrentes"
                         >
-                          <RadarIcon size={14} />
+                          <RadarIcon size={15} />
                         </button>
                       </div>
                     </td>

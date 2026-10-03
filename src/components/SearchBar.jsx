@@ -6,7 +6,7 @@ import {
   SlidersHorizontal, 
   Loader2,
   X,
-  RotateCcw
+  Sparkles
 } from 'lucide-react';
 import RadiusSelector from './RadiusSelector';
 
@@ -27,18 +27,29 @@ export default function SearchBar({
   searchInputRef
 }) {
   const [locLoading, setLocLoading] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
-  const quickCategories = [
+  const mainCategories = [
     { label: 'Dentistas', query: 'odontologia' },
     { label: 'Academias', query: 'academia' },
-    { label: 'Pet shops', query: 'pet shop' },
     { label: 'Restaurantes', query: 'restaurante' },
+    { label: 'Farmácias', query: 'farmácia' },
+    { label: 'Pet shops', query: 'pet shop' },
     { label: 'Advogados', query: 'advogado' },
     { label: 'Imobiliárias', query: 'imobiliária' },
-    { label: 'Salões', query: 'salão de beleza' }
+    { label: 'Salões de Beleza', query: 'salão de beleza' }
   ];
 
-  const handleQuickChipClick = (catQuery) => {
+  const extraCategories = [
+    { label: 'Oficinas Mecânicas', query: 'oficina mecânica' },
+    { label: 'Contabilidade', query: 'escritório de contabilidade' },
+    { label: 'Clínicas Médicas', query: 'clínica médica' },
+    { label: 'Supermercados', query: 'supermercado' },
+    { label: 'Escolas', query: 'escola' },
+    { label: 'Hotéis', query: 'hotel' }
+  ];
+
+  const handleCategoryClick = (catQuery) => {
     setQuery(catQuery);
     if (locationInput.trim()) {
       onSearch(catQuery, locationInput, radiusKm);
@@ -72,50 +83,30 @@ export default function SearchBar({
 
   return (
     <div className="search-header-container">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {/* Primary Search Row */}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Horizontal Primary Search Controls Bar */}
         <div className="search-primary-row">
+          {/* Segment Input */}
           <div className="search-input-wrapper">
-            <Search size={16} className="search-icon-inside" />
+            <Search size={18} className="search-icon-inside" />
             <input
               ref={searchInputRef}
               type="text"
               className="search-input-main"
-              placeholder="Qual tipo de empresa você procura? (ex: odontologia, pet shop, advogados...)"
+              placeholder="Qual segmento ou tipo de empresa? (ex: odontologia, academias, restaurantes...)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Tipo de empresa"
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isLoading || !query.trim()}
-            style={{ minWidth: '105px', height: '38px', fontWeight: '600' }}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                Buscando...
-              </>
-            ) : (
-              <>
-                <Search size={14} />
-                Pesquisar
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Location & Controls Row */}
-        <div className="search-controls-row">
+          {/* Location Input (CEP or City) */}
           <div className="location-input-wrapper">
-            <MapPin size={14} style={{ position: 'absolute', left: '9px', color: 'var(--text-secondary)' }} />
+            <MapPin size={16} style={{ position: 'absolute', left: '12px', color: 'var(--text-secondary)' }} />
             <input
               type="text"
               className="location-input"
-              placeholder="Cidade, bairro ou CEP (ex: Belford Roxo - RJ)"
+              placeholder="Cidade, bairro ou CEP (ex: 26150-387 ou Belford Roxo)"
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
               aria-label="Localização de busca"
@@ -125,75 +116,100 @@ export default function SearchBar({
               className="geo-btn-inside"
               onClick={handleLocateClick}
               disabled={locLoading}
-              title="Usar minha localização GPS"
+              title="Obter minha localização GPS"
             >
-              {locLoading ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={13} />}
+              {locLoading ? <Loader2 size={16} className="animate-spin" /> : <LocateFixed size={16} />}
             </button>
           </div>
 
+          {/* Radius Selector Popover */}
           <RadiusSelector
             radiusKm={radiusKm}
             setRadiusKm={setRadiusKm}
-            onChangeComplete={(val) => {
-              if (query.trim() && locationInput.trim()) {
-                onSearch(query, locationInput, val);
-              }
-            }}
           />
 
+          {/* Filters Toggle Button */}
           <button
             type="button"
-            className={`btn btn-secondary btn-sm ${activeFilters.length > 0 ? 'active' : ''}`}
+            className={`btn btn-secondary ${activeFilters.length > 0 ? 'active' : ''}`}
             onClick={onOpenFilters}
-            style={{ height: '32px' }}
+            style={{ height: '46px', padding: '0 14px' }}
           >
-            <SlidersHorizontal size={13} />
-            Filtros
+            <SlidersHorizontal size={15} />
+            <span>Filtros</span>
             {activeFilters.length > 0 && (
-              <span className="badge badge-lime" style={{ padding: '0 4px', fontSize: '10px' }}>
+              <span className="badge badge-brand" style={{ padding: '1px 6px', fontSize: '11px' }}>
                 {activeFilters.length}
               </span>
             )}
           </button>
+
+          {/* Primary Submit Button */}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isLoading || !query.trim()}
+            style={{ height: '46px', padding: '0 22px', fontSize: '14px', minWidth: '150px' }}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Buscando...</span>
+              </>
+            ) : (
+              <>
+                <Search size={16} />
+                <span>Buscar Empresas</span>
+              </>
+            )}
+          </button>
         </div>
 
-        {/* Removable active filter pills */}
+        {/* Quick Suggestion Chips */}
+        <div className="quick-chips-row">
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Sugestões:
+          </span>
+          {(showAllCategories ? [...mainCategories, ...extraCategories] : mainCategories).map((cat) => (
+            <button
+              key={cat.label}
+              type="button"
+              className="quick-chip"
+              onClick={() => handleCategoryClick(cat.query)}
+            >
+              {cat.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            style={{ fontSize: '12px', fontWeight: '600', color: 'var(--brand-primary)', padding: '4px 8px' }}
+          >
+            {showAllCategories ? 'Menos sugestões' : '+ Mais segmentos'}
+          </button>
+        </div>
+
+        {/* Removable Active Filter Chips */}
         {activeFilters.length > 0 && (
           <div className="active-filters-chips-row">
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Filtros ativos:</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '600' }}>Filtros ativos:</span>
             {activeFilters.map(f => (
               <span key={f.key} className="active-filter-tag">
                 {f.label}
-                <X size={12} className="active-filter-remove" onClick={f.reset} />
+                <X size={13} className="active-filter-remove" onClick={f.reset} />
               </span>
             ))}
             <button
               type="button"
-              className="btn-ghost btn-sm"
+              className="btn-ghost"
               onClick={onResetFilters}
-              style={{ fontSize: '11px', padding: '1px 4px', color: 'var(--text-muted)' }}
+              style={{ fontSize: '12px', padding: '2px 8px', color: 'var(--text-muted)', fontWeight: '600' }}
             >
               Limpar todos
             </button>
           </div>
         )}
-
-        {/* Quick Suggestion Chips */}
-        <div className="quick-chips-row">
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '2px' }}>
-            Sugestões:
-          </span>
-          {quickCategories.map((cat) => (
-            <button
-              key={cat.label}
-              type="button"
-              className="quick-chip"
-              onClick={() => handleQuickChipClick(cat.query)}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
       </form>
     </div>
   );

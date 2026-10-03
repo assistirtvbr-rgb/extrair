@@ -3,14 +3,13 @@ import {
   Trash2, 
   Download, 
   Search, 
-  FolderOpen,
-  Plus
+  FolderOpen
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import DigitalPresenceBadge from '../components/DigitalPresenceBadge';
 import LeadScoreBadge from '../components/LeadScoreBadge';
 import { formatPhone, getCategoryLabel, formatDate } from '../utils/formatter';
-import { exportToCSV, exportToJSON } from '../utils/csv';
+import { exportToCSV } from '../utils/csv';
 
 export default function ListsView({
   onOpenDetails,
@@ -74,15 +73,15 @@ export default function ListsView({
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--bg-main)' }}>
       {/* Sidebar of lists */}
-      <div style={{ width: '270px', borderRight: '1px solid var(--border-color)', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: '13.5px', fontWeight: '700' }}>Listas de Prospecção</h2>
-          <span className="badge badge-neutral tnum">{lists.length}</span>
+      <div style={{ width: '280px', borderRight: '1px solid var(--border-color)', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '800' }}>Listas Salvas</h2>
+          <span className="badge badge-brand tnum">{lists.length}</span>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
           {lists.length === 0 ? (
-            <div style={{ padding: '20px 10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+            <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
               Nenhuma lista criada. Faça uma busca e clique em <strong>Salvar lista</strong>.
             </div>
           ) : (
@@ -93,22 +92,23 @@ export default function ListsView({
                   key={list.id}
                   onClick={() => setActiveListId(list.id)}
                   style={{
-                    padding: '9px 12px',
+                    padding: '12px 14px',
                     borderRadius: 'var(--radius-sm)',
-                    background: isSelected ? 'var(--green-subtle)' : 'transparent',
-                    border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent',
+                    background: isSelected ? 'var(--brand-subtle)' : 'transparent',
+                    border: isSelected ? '1px solid var(--brand-border)' : '1px solid transparent',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    marginBottom: '4px'
+                    marginBottom: '6px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: isSelected ? '700' : '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: '14px', fontWeight: isSelected ? '800' : '600', color: isSelected ? 'var(--brand-primary)' : 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {list.name}
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                       {list.places?.length || 0} empresas • {formatDate(list.createdAt)}
                     </div>
                   </div>
@@ -117,9 +117,9 @@ export default function ListsView({
                     className="btn-icon"
                     onClick={(e) => handleDeleteList(list.id, e)}
                     title="Excluir lista"
-                    style={{ padding: '3px' }}
+                    style={{ padding: '4px' }}
                   >
-                    <Trash2 size={13} color="var(--terracotta)" />
+                    <Trash2 size={14} color="var(--color-alert)" />
                   </button>
                 </div>
               );
@@ -133,24 +133,24 @@ export default function ListsView({
         {activeList ? (
           <>
             {/* Header */}
-            <div style={{ padding: '14px 20px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '16px 24px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontSize: '15px', fontWeight: '700' }}>{activeList.name}</h2>
-                <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '800' }}>{activeList.name}</h2>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Criada em {formatDate(activeList.createdAt)} • {activeList.places?.length || 0} estabelecimentos
                 </span>
               </div>
 
               <button className="btn btn-secondary btn-sm" onClick={handleExportListCSV}>
-                <Download size={13} />
-                Exportar lista (CSV)
+                <Download size={14} />
+                <span>Exportar CSV</span>
               </button>
             </div>
 
             {/* Sub-toolbar: Search & Status Filter */}
-            <div style={{ padding: '8px 20px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div className="results-filter-inline" style={{ width: '220px' }}>
-                <Search size={13} className="search-icon" />
+            <div style={{ padding: '10px 24px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="results-filter-inline" style={{ width: '240px' }}>
+                <Search size={14} className="search-icon" />
                 <input
                   type="text"
                   placeholder="Pesquisar nesta lista..."
@@ -159,12 +159,12 @@ export default function ListsView({
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Status:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>Status:</span>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ padding: '3px 6px', fontSize: '11.5px' }}
+                  style={{ padding: '4px 8px', fontSize: '12.5px' }}
                 >
                   <option value="ALL">Todos os status</option>
                   <option value="Novo">Novo</option>
@@ -181,7 +181,7 @@ export default function ListsView({
             {/* Items Table */}
             <div className="table-container">
               {filteredPlaces.length === 0 ? (
-                <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   Nenhum estabelecimento encontrado nesta lista com os filtros aplicados.
                 </div>
               ) : (
@@ -209,7 +209,7 @@ export default function ListsView({
 
                       return (
                         <tr key={placeId} onClick={() => onOpenDetails(place)} style={{ cursor: 'pointer' }}>
-                          <td style={{ fontWeight: '600' }}>{name}</td>
+                          <td style={{ fontWeight: '700' }}>{name}</td>
                           <td>
                             <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={leadData} />
                           </td>
@@ -224,7 +224,7 @@ export default function ListsView({
                             <select
                               value={leadData.status || 'Novo'}
                               onChange={(e) => onUpdateLead(placeId, { status: e.target.value })}
-                              style={{ fontSize: '11px', padding: '2px 5px', borderRadius: 'var(--radius-xs)' }}
+                              style={{ fontSize: '12px', padding: '3px 6px', borderRadius: 'var(--radius-xs)' }}
                             >
                               <option value="Novo">Novo</option>
                               <option value="Pesquisar">Pesquisar</option>
@@ -241,7 +241,7 @@ export default function ListsView({
                               onClick={(e) => handleRemovePlaceFromList(placeId, e)}
                               title="Remover desta lista"
                             >
-                              <Trash2 size={13} color="var(--terracotta)" />
+                              <Trash2 size={14} color="var(--color-alert)" />
                             </button>
                           </td>
                         </tr>
@@ -255,7 +255,7 @@ export default function ListsView({
         ) : (
           <div className="empty-state-container">
             <div className="empty-state-icon">
-              <FolderOpen size={24} />
+              <FolderOpen size={26} />
             </div>
             <h3 className="empty-state-title">Nenhuma lista selecionada</h3>
             <p className="empty-state-desc">

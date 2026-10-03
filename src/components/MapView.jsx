@@ -4,7 +4,7 @@ import {
   Crosshair, 
   Flame, 
   Navigation,
-  Layers
+  MapPin
 } from 'lucide-react';
 import { formatPhone, getCategoryLabel } from '../utils/formatter';
 import { formatDistance } from '../utils/distance';
@@ -53,7 +53,7 @@ export default function MapView({
       attributionControl: false
     });
 
-    // 100% Free OpenStreetMap Standard Tiles (No watermarks, no API key needed)
+    // 100% Free OpenStreetMap Standard Tiles
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
@@ -93,11 +93,11 @@ export default function MapView({
     const radiusMeters = radiusKm * 1000;
     radiusCircleRef.current = L.circle([centerLat, centerLng], {
       radius: radiusMeters,
-      color: '#173F35',
-      weight: 1.8,
-      dashArray: '4, 4',
-      fillColor: '#173F35',
-      fillOpacity: 0.07
+      color: '#5262F5',
+      weight: 2,
+      dashArray: '5, 5',
+      fillColor: '#5262F5',
+      fillOpacity: 0.06
     }).addTo(map);
 
   }, [centerLat, centerLng, radiusKm]);
@@ -113,7 +113,7 @@ export default function MapView({
     densityLayer.clearLayers();
     markersMapRef.current.clear();
 
-    // Density concentration layer
+    // Heat/Density concentration layer
     if (showDensity && places.length > 0) {
       places.forEach(p => {
         const lat = p.location?.latitude || p.lat;
@@ -122,14 +122,14 @@ export default function MapView({
           L.circle([lat, lng], {
             radius: 400,
             color: 'transparent',
-            fillColor: '#C85A32',
-            fillOpacity: 0.16
+            fillColor: '#5262F5',
+            fillOpacity: 0.18
           }).addTo(densityLayer);
         }
       });
     }
 
-    // Add discreet custom markers with XSS-safe escaping
+    // Add clean custom markers
     places.forEach((place, index) => {
       const lat = place.location?.latitude || place.lat;
       const lng = place.location?.longitude || place.lng;
@@ -152,34 +152,34 @@ export default function MapView({
       const customIcon = L.divIcon({
         className: 'custom-leaflet-icon-wrapper',
         html: markerHtml,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -16]
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -18]
       });
 
       const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markersLayer);
 
       const popupHtml = `
-        <div style="min-width: 190px; padding: 2px; font-family: 'IBM Plex Sans', sans-serif;">
-          <div style="font-size: 13px; font-weight: 700; color: #202622; margin-bottom: 2px;">
+        <div style="min-width: 200px; padding: 4px; font-family: 'Manrope', sans-serif;">
+          <div style="font-size: 14px; font-weight: 800; color: #20242C; margin-bottom: 2px;">
             ${safeName}
           </div>
-          <div style="font-size: 11px; color: #616963; margin-bottom: 5px;">
+          <div style="font-size: 12px; color: #626B79; margin-bottom: 6px;">
             ${safeCategory} • ${formatDistance(dist)}
           </div>
           ${rating ? `
-            <div style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; margin-bottom: 6px;">
-              <span style="color: #EAB308;">★</span> ${rating} <span style="font-weight: normal; color: #8D9690;">(${reviews})</span>
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; margin-bottom: 6px;">
+              <span style="color: #F59E0B;">★</span> ${rating} <span style="font-weight: 500; color: #94A3B8;">(${reviews})</span>
             </div>
           ` : ''}
           ${safePhone ? `
-            <div style="font-size: 11px; color: #202622; margin-bottom: 8px;">
+            <div style="font-size: 12px; color: #20242C; margin-bottom: 8px;">
               📞 ${safePhone}
             </div>
           ` : ''}
           <button 
             id="popup-btn-${escapeHtml(placeId)}" 
-            style="width: 100%; padding: 5px 8px; background: #173F35; color: #fff; font-size: 11.5px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer;"
+            style="width: 100%; padding: 7px 10px; background: #5262F5; color: #fff; font-size: 12.5px; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; box-shadow: 0 2px 6px rgba(82, 98, 245, 0.35);"
           >
             Ver Ficha Comercial
           </button>
@@ -248,9 +248,9 @@ export default function MapView({
       if (lat && lng) {
         radarCircleRef.current = L.circle([lat, lng], {
           radius: 2000,
-          color: '#C85A32',
+          color: '#E11D48',
           weight: 2,
-          fillColor: '#C85A32',
+          fillColor: '#E11D48',
           fillOpacity: 0.12
         }).addTo(map);
 
@@ -275,20 +275,20 @@ export default function MapView({
           type="button"
           className={`map-control-btn ${isExploreMode ? 'active' : ''}`}
           onClick={() => setIsExploreMode(!isExploreMode)}
-          title="Clique em qualquer lugar no mapa para redefinir a busca naquela região"
+          title="Clique em qualquer ponto do mapa para reposicionar a pesquisa"
         >
-          <Crosshair size={13} />
-          {isExploreMode ? 'Clique no mapa...' : 'Explorar área'}
+          <Crosshair size={14} />
+          <span>{isExploreMode ? 'Clique no mapa...' : 'Explorar Área'}</span>
         </button>
 
         <button
           type="button"
           className={`map-control-btn ${showDensity ? 'active' : ''}`}
           onClick={() => setShowDensity(!showDensity)}
-          title="Exibir mapa de densidade de amostra local"
+          title="Exibir mapa de densidade comercial"
         >
-          <Flame size={13} />
-          Densidade
+          <Flame size={14} />
+          <span>Densidade</span>
         </button>
 
         <button
@@ -297,9 +297,15 @@ export default function MapView({
           onClick={handleRecenter}
           title="Recentralizar no ponto de busca"
         >
-          <Navigation size={13} />
-          Centro
+          <Navigation size={14} />
+          <span>Centro</span>
         </button>
+      </div>
+
+      {/* Floating Information Badge */}
+      <div className="map-info-floating-badge">
+        <MapPin size={14} color="#5262F5" />
+        <span>Raio de {radiusKm} km • {places.length} locais no mapa</span>
       </div>
 
       {isExploreMode && (
@@ -308,15 +314,16 @@ export default function MapView({
           top: '16px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'var(--green-dark)',
+          background: '#181C23',
           color: '#FFFFFF',
-          padding: '6px 14px',
+          padding: '8px 18px',
           borderRadius: 'var(--radius-full)',
-          fontSize: '12px',
-          fontWeight: '600',
-          boxShadow: 'var(--shadow-md)',
+          fontSize: '13px',
+          fontWeight: '700',
+          boxShadow: 'var(--shadow-xl)',
           zIndex: 400,
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
           🎯 Clique em qualquer ponto do mapa para reposicionar o centro da busca
         </div>

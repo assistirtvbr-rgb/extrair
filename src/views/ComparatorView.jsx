@@ -4,11 +4,8 @@ import {
   MapPin, 
   TrendingUp, 
   Star, 
-  Phone, 
-  Globe, 
   Loader2, 
-  Award,
-  Info
+  Award
 } from 'lucide-react';
 import { placesService } from '../services/placesService';
 import { geoService } from '../services/geoService';
@@ -65,7 +62,6 @@ export default function ComparatorView({ isDemoMode = true }) {
         const withWeb = places.filter(p => p.websiteUri || p.website).length;
         const webPct = totalSample > 0 ? Math.round((withWeb / totalSample) * 100) : 0;
 
-        // Area = pi * r^2
         const areaKm2 = Math.PI * Math.pow(radiusKm, 2);
         const density = (totalSample / areaKm2).toFixed(2);
 
@@ -90,74 +86,72 @@ export default function ComparatorView({ isDemoMode = true }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '24px' }}>
       {/* Header Form */}
-      <div className="filters-panel" style={{ width: '100%', maxWidth: '880px', margin: '0 auto 20px', borderRadius: 'var(--radius-md)' }}>
-        <div className="filters-panel-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BarChart3 size={16} color="var(--green-dark)" />
-            <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Comparador de Mercado & Amostras Regionais</h2>
-          </div>
+      <div style={{ width: '100%', maxWidth: '960px', margin: '0 auto 24px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <BarChart3 size={18} color="var(--brand-primary)" />
+          <h2 style={{ fontSize: '16px', fontWeight: '800' }}>Comparador de Mercado & Amostras Regionais</h2>
         </div>
 
-        <form onSubmit={handleCompare} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '10px' }}>
-            <div className="filter-group">
-              <label className="filter-label">Segmento Comercial</label>
+        <form onSubmit={handleCompare} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>Segmento Comercial</label>
               <input
                 type="text"
                 placeholder="Ex: odontologia, academia..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 required
-                style={{ padding: '7px 10px' }}
+                style={{ width: '100%', height: '40px', padding: '0 12px' }}
               />
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Região 1</label>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>Região 1</label>
               <input
                 type="text"
                 value={region1}
                 onChange={(e) => setRegion1(e.target.value)}
                 placeholder="Bairro / Cidade"
                 required
-                style={{ padding: '7px 10px' }}
+                style={{ width: '100%', height: '40px', padding: '0 12px' }}
               />
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Região 2</label>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>Região 2</label>
               <input
                 type="text"
                 value={region2}
                 onChange={(e) => setRegion2(e.target.value)}
                 placeholder="Bairro / Cidade"
-                style={{ padding: '7px 10px' }}
+                style={{ width: '100%', height: '40px', padding: '0 12px' }}
               />
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Região 3 (Opcional)</label>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '6px' }}>Região 3 (Opcional)</label>
               <input
                 type="text"
                 value={region3}
                 onChange={(e) => setRegion3(e.target.value)}
                 placeholder="Bairro / Cidade"
-                style={{ padding: '7px 10px' }}
+                style={{ width: '100%', height: '40px', padding: '0 12px' }}
               />
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Raio amostral:</span>
-              <div className="radius-selector">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)' }}>Raio amostral:</span>
+              <div style={{ display: 'flex', gap: '4px' }}>
                 {[3, 5, 10, 15].map(r => (
                   <button
                     key={r}
                     type="button"
-                    className={`radius-chip ${radiusKm === r ? 'active' : ''}`}
+                    className={`btn btn-secondary btn-sm ${radiusKm === r ? 'active' : ''}`}
                     onClick={() => setRadiusKm(r)}
                   >
                     {r} km
@@ -168,19 +162,19 @@ export default function ComparatorView({ isDemoMode = true }) {
 
             <button
               type="submit"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary"
               disabled={loading || !query.trim()}
-              style={{ minWidth: '150px' }}
+              style={{ minWidth: '160px', height: '40px' }}
             >
               {loading ? (
                 <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Consultando amostras...
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Consultando...</span>
                 </>
               ) : (
                 <>
-                  <TrendingUp size={14} />
-                  Comparar Amostras
+                  <TrendingUp size={15} />
+                  <span>Comparar Regiões</span>
                 </>
               )}
             </button>
@@ -190,36 +184,36 @@ export default function ComparatorView({ isDemoMode = true }) {
 
       {/* Comparison Results */}
       {comparisonData && comparisonData.length > 0 && (
-        <div style={{ maxWidth: '880px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${comparisonData.length}, 1fr)`, gap: '14px' }}>
+        <div style={{ maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${comparisonData.length}, 1fr)`, gap: '16px' }}>
             {comparisonData.map((data, idx) => {
               const isTopDensity = comparisonData.every(d => data.sampleDensity >= d.sampleDensity);
 
               return (
-                <div key={idx} className="detail-card-box" style={{ background: 'var(--bg-panel)', padding: '16px', border: '1px solid var(--border-color)', position: 'relative' }}>
+                <div key={idx} className="detail-card-box" style={{ background: 'var(--bg-panel)', padding: '20px', border: '1px solid var(--border-color)', position: 'relative' }}>
                   {isTopDensity && (
-                    <div style={{ position: 'absolute', top: '-9px', right: '12px' }}>
-                      <span className="badge badge-lime" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Award size={11} /> Maior Densidade Amostral
+                    <div style={{ position: 'absolute', top: '-10px', right: '14px' }}>
+                      <span className="badge badge-brand" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Award size={12} /> Maior Densidade
                       </span>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-                    <MapPin size={15} color="var(--green-dark)" />
-                    <h3 style={{ fontSize: '14px', fontWeight: '700' }}>{data.regionName}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                    <MapPin size={16} color="var(--brand-primary)" />
+                    <h3 style={{ fontSize: '15px', fontWeight: '800' }}>{data.regionName}</h3>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div className="detail-item-row">
                       <span className="detail-item-label">Amostra Encontrada:</span>
-                      <span className="detail-item-value tnum" style={{ fontWeight: '700', color: 'var(--green-dark)' }}>
+                      <span className="detail-item-value tnum" style={{ fontWeight: '800', color: 'var(--brand-primary)' }}>
                         {data.totalSample} empresas
                       </span>
                     </div>
 
                     <div className="detail-item-row">
-                      <span className="detail-item-label">Densidade da Amostra:</span>
+                      <span className="detail-item-label">Densidade:</span>
                       <span className="detail-item-value tnum">
                         {data.sampleDensity} emp/km²
                       </span>
@@ -227,14 +221,14 @@ export default function ComparatorView({ isDemoMode = true }) {
 
                     <div className="detail-item-row">
                       <span className="detail-item-label">Avaliação Média:</span>
-                      <span className="detail-item-value tnum" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Star size={12} style={{ color: '#EAB308', fill: '#EAB308' }} /> {data.avgRating}
+                      <span className="detail-item-value tnum" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Star size={13} style={{ color: 'var(--color-warning)', fill: 'var(--color-warning)' }} /> {data.avgRating}
                       </span>
                     </div>
 
                     <div className="detail-item-row">
                       <span className="detail-item-label">Média de Reviews:</span>
-                      <span className="detail-item-value tnum">{data.avgReviews} reviews</span>
+                      <span className="detail-item-value tnum">{data.avgReviews}</span>
                     </div>
 
                     <div className="detail-item-row">
@@ -252,7 +246,7 @@ export default function ComparatorView({ isDemoMode = true }) {
             })}
           </div>
 
-          <div style={{ background: 'var(--bg-panel)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div style={{ background: 'var(--bg-panel)', padding: '14px 20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-secondary)' }}>
             ℹ️ <strong>Nota metodológica:</strong> As métricas acima representam os resultados retornados na consulta amostral do raio selecionado.
           </div>
         </div>

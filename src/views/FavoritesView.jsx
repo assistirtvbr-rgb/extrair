@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Bookmark, Search, Download, Trash2, Globe, Phone, Star, MapPin } from 'lucide-react';
+import { Bookmark, Search, Download, Trash2, Star } from 'lucide-react';
 import DigitalPresenceBadge from '../components/DigitalPresenceBadge';
 import LeadScoreBadge from '../components/LeadScoreBadge';
-import { formatPhone, getCategoryLabel, formatDate } from '../utils/formatter';
-import { exportToCSV, exportToJSON } from '../utils/csv';
+import { formatPhone, getCategoryLabel } from '../utils/formatter';
+import { exportToCSV } from '../utils/csv';
 
 export default function FavoritesView({
   favorites = [],
@@ -31,10 +31,10 @@ export default function FavoritesView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: 'var(--bg-main)' }}>
       {/* Top Toolbar */}
-      <div style={{ padding: '12px 20px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="results-filter-inline" style={{ width: '240px' }}>
-            <Search size={13} className="search-icon" />
+      <div style={{ padding: '14px 24px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="results-filter-inline" style={{ width: '260px' }}>
+            <Search size={14} className="search-icon" />
             <input
               type="text"
               placeholder="Pesquisar nos favoritos..."
@@ -42,15 +42,15 @@ export default function FavoritesView({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }} className="tnum">
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }} className="tnum">
             {filtered.length} {filtered.length === 1 ? 'empresa favoritada' : 'empresas favoritadas'}
           </span>
         </div>
 
         {favorites.length > 0 && (
           <button className="btn btn-secondary btn-sm" onClick={handleExport}>
-            <Download size={13} />
-            Exportar Favoritos (CSV)
+            <Download size={14} />
+            <span>Exportar Favoritos (CSV)</span>
           </button>
         )}
       </div>
@@ -60,11 +60,11 @@ export default function FavoritesView({
         {filtered.length === 0 ? (
           <div className="empty-state-container">
             <div className="empty-state-icon">
-              <Bookmark size={24} />
+              <Bookmark size={26} color="var(--color-warning)" />
             </div>
             <h3 className="empty-state-title">Nenhum lead favorito</h3>
             <p className="empty-state-desc">
-              Clique no ícone de estrela durante as pesquisas para marcar empresas como favoritas.
+              Clique no ícone de estrela nas buscas para salvar empresas para abordagem prioritária.
             </p>
           </div>
         ) : (
@@ -95,7 +95,7 @@ export default function FavoritesView({
 
                 return (
                   <tr key={placeId} onClick={() => onOpenDetails(place)} style={{ cursor: 'pointer' }}>
-                    <td style={{ fontWeight: '600' }}>{name}</td>
+                    <td style={{ fontWeight: '700' }}>{name}</td>
                     <td>
                       <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={leadData} />
                     </td>
@@ -108,25 +108,26 @@ export default function FavoritesView({
                     <td>{phone ? formatPhone(phone) : '—'}</td>
                     <td>
                       {place.rating ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
-                          <Star size={11} style={{ color: '#EAB308', fill: '#EAB308' }} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}>
+                          <Star size={12} style={{ color: 'var(--color-warning)', fill: 'var(--color-warning)' }} />
                           <span className="tnum">{place.rating}</span> ({place.userRatingCount || 0})
                         </span>
                       ) : '—'}
                     </td>
-                    <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={address}>
+                    <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={address}>
                       {address}
                     </td>
                     <td>
-                      <span className="badge badge-green">{leadData.status || 'Novo'}</span>
+                      <span className="badge badge-brand">{leadData.status || 'Novo'}</span>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <button
+                        type="button"
                         className="btn-icon"
                         onClick={() => onToggleFavorite(place)}
                         title="Remover dos favoritos"
                       >
-                        <Trash2 size={13} color="var(--terracotta)" />
+                        <Trash2 size={14} color="var(--color-alert)" />
                       </button>
                     </td>
                   </tr>

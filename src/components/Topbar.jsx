@@ -7,8 +7,7 @@ import {
   Map as MapIcon, 
   Table as TableIcon,
   Sparkles,
-  Command,
-  HelpCircle
+  Command
 } from 'lucide-react';
 
 export default function Topbar({ 
@@ -24,19 +23,19 @@ export default function Topbar({
   const getTitles = () => {
     switch (currentView) {
       case 'pipeline':
-        return { title: 'Pipeline de Prospecção', subtitle: 'Acompanhamento de oportunidades, retornos e status comercial' };
+        return { title: 'Pipeline CRM', subtitle: 'Acompanhe leads, etapas comerciais e datas de retorno' };
       case 'lists':
-        return { title: 'Minhas Listas Comerciais', subtitle: 'Segmentações de mercado e exportações salvas' };
+        return { title: 'Minhas Listas', subtitle: 'Segmentações e carteiras de prospecção salvas' };
       case 'favorites':
-        return { title: 'Leads Favoritos', subtitle: 'Estabelecimentos marcados com estrela para abordagem' };
+        return { title: 'Leads Favoritos', subtitle: 'Estabelecimentos marcados com estrela para abordagem prioritária' };
       case 'comparator':
-        return { title: 'Comparador de Regiões', subtitle: 'Amostra comparativa e densidade comercial por bairro ou cidade' };
+        return { title: 'Comparador de Regiões', subtitle: 'Análise de densidade e oportunidades entre bairros e cidades' };
       case 'history':
-        return { title: 'Histórico de Consultas', subtitle: 'Consultas anteriores com reexecução em 1 clique' };
+        return { title: 'Histórico de Consultas', subtitle: 'Reexecute buscas anteriores com um único clique' };
       case 'settings':
-        return { title: 'Configurações do LeadMap', subtitle: 'Credenciais da API, parâmetros de raio e backup local' };
+        return { title: 'Configurações', subtitle: 'Parâmetros de geolocalização, conexão de dados e armazenamento' };
       default:
-        return { title: 'Explorar Estabelecimentos', subtitle: 'Estação de trabalho de prospecção e inteligência local' };
+        return { title: 'Explorar Empresas', subtitle: 'Pesquisa e prospecção de estabelecimentos comerciais' };
     }
   };
 
@@ -49,8 +48,8 @@ export default function Topbar({
           <h1 className="topbar-title">
             {title}
             {currentView === 'search' && totalResults > 0 && (
-              <span className="badge badge-green tnum">
-                {totalResults} {totalResults === 1 ? 'carregado' : 'carregados'}
+              <span className="badge badge-brand tnum" style={{ fontSize: '13px', padding: '2px 8px' }}>
+                {totalResults} {totalResults === 1 ? 'empresa' : 'empresas'}
               </span>
             )}
           </h1>
@@ -62,79 +61,94 @@ export default function Topbar({
         {currentView === 'search' && (
           <>
             {/* View Layout Switcher */}
-            <div className="radius-selector" style={{ padding: '2px', marginRight: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-hover)', padding: '3px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', marginRight: '6px' }}>
               <button
-                className={`radius-chip ${viewMode === 'split' ? 'active' : ''}`}
+                type="button"
+                className={`btn btn-ghost btn-sm ${viewMode === 'split' ? 'active' : ''}`}
                 onClick={() => setViewMode('split')}
-                title="Dividir tela: Lista + Mapa"
+                title="Visualização dividida: Lista e Mapa"
+                style={{ padding: '6px 10px', background: viewMode === 'split' ? '#FFFFFF' : 'transparent', boxShadow: viewMode === 'split' ? 'var(--shadow-xs)' : 'none' }}
               >
-                <Columns2 size={14} />
+                <Columns2 size={15} color={viewMode === 'split' ? 'var(--brand-primary)' : 'currentColor'} />
               </button>
               <button
-                className={`radius-chip ${viewMode === 'list' ? 'active' : ''}`}
+                type="button"
+                className={`btn btn-ghost btn-sm ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
                 title="Visualização somente Lista"
+                style={{ padding: '6px 10px', background: viewMode === 'list' ? '#FFFFFF' : 'transparent', boxShadow: viewMode === 'list' ? 'var(--shadow-xs)' : 'none' }}
               >
-                <List size={14} />
+                <List size={15} color={viewMode === 'list' ? 'var(--brand-primary)' : 'currentColor'} />
               </button>
               <button
-                className={`radius-chip ${viewMode === 'map' ? 'active' : ''}`}
+                type="button"
+                className={`btn btn-ghost btn-sm ${viewMode === 'map' ? 'active' : ''}`}
                 onClick={() => setViewMode('map')}
                 title="Visualização somente Mapa"
+                style={{ padding: '6px 10px', background: viewMode === 'map' ? '#FFFFFF' : 'transparent', boxShadow: viewMode === 'map' ? 'var(--shadow-xs)' : 'none' }}
               >
-                <MapIcon size={14} />
+                <MapIcon size={15} color={viewMode === 'map' ? 'var(--brand-primary)' : 'currentColor'} />
               </button>
               <button
-                className={`radius-chip ${viewMode === 'table' ? 'active' : ''}`}
+                type="button"
+                className={`btn btn-ghost btn-sm ${viewMode === 'table' ? 'active' : ''}`}
                 onClick={() => setViewMode('table')}
-                title="Visualização em Tabela Avançada"
+                title="Visualização em Tabela Completa"
+                style={{ padding: '6px 10px', background: viewMode === 'table' ? '#FFFFFF' : 'transparent', boxShadow: viewMode === 'table' ? 'var(--shadow-xs)' : 'none' }}
               >
-                <TableIcon size={14} />
+                <TableIcon size={15} color={viewMode === 'table' ? 'var(--brand-primary)' : 'currentColor'} />
               </button>
             </div>
 
             {totalResults > 0 && (
               <>
                 <button
-                  className="btn btn-lime btn-sm"
+                  type="button"
+                  className="btn btn-secondary btn-sm"
                   onClick={onOpenBatchEnrich}
-                  title="Enriquecer redes sociais e WhatsApp dos leads visíveis"
+                  title="Enriquecer redes sociais e WhatsApp em lote"
+                  style={{ height: '36px' }}
                 >
-                  <Sparkles size={13} />
-                  Enriquecer
+                  <Sparkles size={14} color="#D946EF" />
+                  <span>Enriquecer</span>
                 </button>
 
                 <button
+                  type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={onOpenSaveList}
                   title="Salvar resultados como nova lista"
+                  style={{ height: '36px' }}
                 >
-                  <BookmarkPlus size={13} />
-                  Salvar lista
+                  <BookmarkPlus size={14} />
+                  <span>Salvar Lista</span>
                 </button>
 
                 <button
-                  className="btn btn-primary btn-sm"
+                  type="button"
+                  className="btn btn-secondary btn-sm"
                   onClick={onOpenExport}
                   title="Exportar para CSV ou JSON"
+                  style={{ height: '36px' }}
                 >
-                  <Download size={13} />
-                  Exportar
+                  <Download size={14} />
+                  <span>Exportar</span>
                 </button>
               </>
             )}
           </>
         )}
 
-        {/* Command Palette trigger */}
+        {/* Command Palette Trigger */}
         <button
+          type="button"
           className="btn btn-ghost btn-sm"
           onClick={onOpenCommandPalette}
-          title="Abrir paleta de comandos (Ctrl + K / ⌘ + K)"
-          style={{ gap: '4px', fontSize: '11.5px', color: 'var(--text-secondary)' }}
+          title="Abrir paleta de comandos rápidos (Ctrl + K / ⌘ + K)"
+          style={{ gap: '5px', fontSize: '12px', color: 'var(--text-secondary)', padding: '6px 10px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', background: 'var(--bg-hover)' }}
         >
-          <Command size={12} />
-          <span style={{ fontWeight: '600' }}>K</span>
+          <Command size={13} />
+          <span style={{ fontWeight: '700' }}>K</span>
         </button>
       </div>
     </header>

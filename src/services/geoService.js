@@ -22,6 +22,69 @@ export const geoService = {
 
     const trimmed = query.trim();
 
+    // 1. Check for Brazilian CEP (8 digits or formatted XXXXX-XXX)
+    const cepOnlyDigits = trimmed.replace(/\D/g, '');
+    if (cepOnlyDigits.length === 8 && /^\d{8}$/.test(cepOnlyDigits)) {
+      try {
+        // Try BrasilAPI first (often includes geocoordinates directly)
+        const bApiRes = await fetch(`https://brasilapi.com.br/api/cep/v2/${cepOnlyDigits}`);
+        if (bApiRes.ok) {
+          const bData = await bApiRes.json();
+          if (bData.location?.coordinates?.latitude && bData.location?.coordinates?.longitude) {
+            const locName = `${bData.neighborhood ? bData.neighborhood + ', ' : ''}${bData.city} - ${bData.state}`;
+            return {
+              lat: parseFloat(bData.location.coordinates.latitude),
+              lng: parseFloat(bData.location.coordinates.longitude),
+              displayName: `${locName} (${cepOnlyDigits.replace(/(\d{5})(\d{3})/, '$1-$2')})`,
+              name: trimmed
+            };
+          } else if (bData.city) {
+            // Geocode the city/neighborhood via Nominatim
+            const searchTerms = `${bData.street ? bData.street + ', ' : ''}${bData.neighborhood ? bData.neighborhood + ', ' : ''}${bData.city} - ${bData.state}, Brasil`;
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchTerms)}&format=json&countrycodes=br&limit=1`, {
+              headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'LeadMap-App/2.0' }
+            });
+            if (geoRes.ok) {
+              const geoData = await geoRes.json();
+              if (geoData && geoData.length > 0) {
+                return {
+                  lat: parseFloat(geoData[0].lat),
+                  lng: parseFloat(geoData[0].lon),
+                  displayName: `${bData.city} - ${bData.state} (${cepOnlyDigits.replace(/(\d{5})(\d{3})/, '$1-$2')})`,
+                  name: trimmed
+                };
+              }
+            }
+          }
+        }
+
+        // Fallback to ViaCEP
+        const viaCepRes = await fetch(`https://viacep.com.br/ws/${cepOnlyDigits}/json/`);
+        if (viaCepRes.ok) {
+          const vData = await viaCepRes.json();
+          if (!vData.erro && vData.localidade) {
+            const searchTerms = `${vData.logradouro ? vData.logradouro + ', ' : ''}${vData.bairro ? vData.bairro + ', ' : ''}${vData.localidade} - ${vData.uf}, Brasil`;
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchTerms)}&format=json&countrycodes=br&limit=1`, {
+              headers: { 'Accept-Language': 'pt-BR,pt;q=0.9', 'User-Agent': 'LeadMap-App/2.0' }
+            });
+            if (geoRes.ok) {
+              const geoData = await geoRes.json();
+              if (geoData && geoData.length > 0) {
+                return {
+                  lat: parseFloat(geoData[0].lat),
+                  lng: parseFloat(geoData[0].lon),
+                  displayName: `${vData.bairro ? vData.bairro + ', ' : ''}${vData.localidade} - ${vData.uf}`,
+                  name: trimmed
+                };
+              }
+            }
+          }
+        }
+      } catch (cepErr) {
+        console.warn('CEP resolution failed:', cepErr);
+      }
+    }
+
     try {
       const sanitized = encodeURIComponent(trimmed);
       const url = `https://nominatim.openstreetmap.org/search?q=${sanitized}&format=json&countrycodes=br&limit=1&addressdetails=1`;

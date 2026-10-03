@@ -6,15 +6,17 @@
   background-color: var(--bg-main);
 }
 
-/* Sidebar - Collapsible with labels & icons */
+/* ==========================================================================
+   Sidebar Navigation (Graphite #181C23)
+   ========================================================================== */
 .app-sidebar {
   width: var(--sidebar-width-expanded);
   height: 100%;
-  background-color: var(--green-dark);
+  background-color: var(--bg-nav);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 16px 12px;
+  padding: 20px 14px;
   z-index: var(--z-sidebar);
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
@@ -23,100 +25,112 @@
 
 .app-sidebar.compact {
   width: var(--sidebar-width-compact);
-  padding: 16px 8px;
+  padding: 20px 10px;
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   padding: 0 4px;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
   color: var(--text-inverse);
   cursor: pointer;
 }
 
 .sidebar-logo-icon {
-  width: 34px;
-  height: 34px;
-  background: var(--lime-accent);
-  color: var(--green-dark);
-  border-radius: var(--radius-sm);
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, #5262F5 0%, #3B49DF 100%);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(82, 98, 245, 0.35);
+  flex-shrink: 0;
 }
 
 .sidebar-logo-text {
   font-family: var(--font-heading);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: #FFFFFF;
 }
 
 .sidebar-collapse-btn {
-  color: rgba(255, 255, 255, 0.55);
-  padding: 4px;
+  color: #94A3B8;
+  padding: 6px;
   border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition-fast);
 }
 
 .sidebar-collapse-btn:hover {
   color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-nav-hover);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
 }
 
 .nav-item {
   position: relative;
   width: 100%;
-  height: 38px;
+  height: 42px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.72);
+  color: #94A3B8;
   background: transparent;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   transition: all var(--transition-fast);
   text-align: left;
 }
 
 .nav-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--bg-nav-hover);
   color: #FFFFFF;
 }
 
 .nav-item.active {
-  background-color: rgba(214, 236, 145, 0.18);
-  color: var(--lime-accent);
-  font-weight: 600;
+  background-color: var(--bg-nav-active);
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3.5px;
+  background-color: var(--brand-primary);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
 }
 
 .app-sidebar.compact .nav-item {
   justify-content: center;
   padding: 0;
-  width: 44px;
+  width: 48px;
   margin: 0 auto;
 }
 
@@ -135,28 +149,28 @@
 }
 
 .nav-badge {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  background: var(--lime-accent);
-  color: var(--green-dark);
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--brand-primary);
+  color: #FFFFFF;
   border-radius: var(--radius-full);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Tooltip on compact mode */
+/* Tooltip in compact mode */
 .app-sidebar.compact .nav-item .tooltip {
   position: absolute;
-  left: calc(100% + 10px);
-  background: #171816;
+  left: calc(100% + 12px);
+  background: #0F172A;
   color: #FFFFFF;
-  font-size: 12px;
-  font-weight: 500;
-  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
   pointer-events: none;
@@ -164,7 +178,8 @@
   transform: translateX(-4px);
   transition: opacity var(--transition-fast), transform var(--transition-fast);
   z-index: var(--z-popover);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .app-sidebar.compact .nav-item:hover .tooltip {
@@ -176,34 +191,44 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 4px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   width: 100%;
 }
 
 .mode-badge-pill {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 12px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  color: #94A3B8;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.mode-badge-pill:hover {
+  background: var(--bg-nav-hover);
+  color: #FFFFFF;
 }
 
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background-color: var(--lime-accent);
-  box-shadow: 0 0 0 2px rgba(214, 236, 145, 0.25);
+  background-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(82, 98, 245, 0.25);
 }
 
 .status-dot.live {
-  background-color: #22c55e;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+  background-color: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
 }
 
-/* Main Workspace */
+/* ==========================================================================
+   Main Workspace & Topbar
+   ========================================================================== */
 .app-main {
   flex: 1;
   display: flex;
@@ -213,7 +238,6 @@
   overflow: hidden;
 }
 
-/* Topbar */
 .app-topbar {
   height: var(--topbar-height);
   background-color: var(--bg-panel);
@@ -221,7 +245,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 24px;
   z-index: var(--z-topbar);
   flex-shrink: 0;
 }
@@ -229,39 +253,62 @@
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .topbar-title {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  letter-spacing: -0.025em;
 }
 
 .topbar-subtitle {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 1px;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 /* Content Area */
 .app-content {
   flex: 1;
   display: flex;
+  flex-direction: column;
   position: relative;
   overflow: hidden;
 }
 
+/* ==========================================================================
+   Search View Layout: Full-Width Search Strip Above Split Panels
+   ========================================================================== */
+.search-view-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.search-strip-wrapper {
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 20;
+}
+
 /* Resizable Split Layout */
 .content-split {
+  flex: 1;
   display: flex;
   width: 100%;
   height: 100%;
@@ -276,20 +323,21 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  min-width: 320px;
+  min-width: 360px;
+  max-width: 75%;
 }
 
 .split-map-panel {
   flex: 1;
   height: 100%;
   position: relative;
-  background: #E5E3DF;
+  background: #E5E7EB;
   min-width: 320px;
 }
 
 /* Resizer Handle */
 .split-resizer {
-  width: 6px;
+  width: 8px;
   height: 100%;
   background: transparent;
   cursor: col-resize;
@@ -305,23 +353,26 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 2px;
-  height: 32px;
+  width: 3px;
+  height: 36px;
   background: var(--border-color);
   border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast), height var(--transition-fast);
 }
 
 .split-resizer:hover, .split-resizer:active {
-  background: var(--green-subtle);
+  background: var(--brand-subtle);
 }
 
 .split-resizer:hover::after, .split-resizer:active::after {
-  background: var(--green-dark);
+  background: var(--brand-primary);
+  height: 48px;
 }
 
 /* View Mode overrides */
 .view-mode-list-only .split-list-panel {
   width: 100% !important;
+  max-width: 100% !important;
 }
 .view-mode-list-only .split-map-panel,
 .view-mode-list-only .split-resizer {
@@ -336,12 +387,14 @@
   display: none !important;
 }
 
-/* Centralized Business Details Drawer */
+/* ==========================================================================
+   Centralized Business Details Drawer (520px)
+   ========================================================================== */
 .business-details-drawer {
   position: fixed;
   top: 0;
   right: 0;
-  width: 480px;
+  width: 520px;
   max-width: 100vw;
   height: 100vh;
   background: var(--bg-panel);
@@ -361,15 +414,23 @@
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(32, 38, 34, 0.35);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(3px);
   z-index: 85;
+  animation: fadeIn 180ms ease-out;
 }
 
-/* Responsive */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
 @media (max-width: 1024px) {
   .business-details-drawer {
-    width: 440px;
+    width: 480px;
   }
 }
 
@@ -380,9 +441,9 @@
   
   .app-sidebar {
     width: 100% !important;
-    height: 54px;
+    height: 60px;
     flex-direction: row;
-    padding: 0 12px;
+    padding: 0 16px;
     border-right: none;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
