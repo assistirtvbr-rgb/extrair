@@ -173,14 +173,19 @@ async function fetchOverpassPlaces(query, lat, lng, radiusMeters) {
 
   for (const overpassUrl of overpassUrls) {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+
       const response = await fetch(overpassUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'LeadMap-App/2.0'
         },
-        body: `data=${encodeURIComponent(overpassQL)}`
+        body: `data=${encodeURIComponent(overpassQL)}`,
+        signal: controller.signal
       });
+      clearTimeout(timeout);
 
       if (response.ok) {
         const data = await response.json();
@@ -240,7 +245,7 @@ async function fetchOverpassPlaces(query, lat, lng, radiusMeters) {
         if (places.length > 0) return places;
       }
     } catch (e) {
-      console.warn(`Overpass mirror ${overpassUrl} failed:`, e);
+      // Fast fallback on timeout
     }
   }
 
@@ -248,101 +253,195 @@ async function fetchOverpassPlaces(query, lat, lng, radiusMeters) {
 }
 
 /**
- * 3. 100% Free Real Web Business Scraper (No Google API Key needed)
+ * 3. Fast Deep Multi-Channel Web Business Scraper (Instagram, Websites, Phones & WhatsApp)
  */
 async function fetchFreeWebPlaces(query, locationName, lat, lng) {
   try {
-    const searchTerm = `${query} ${locationName}`.trim();
-    const res = await fetch('https://lite.duckduckgo.com/lite/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept-Language': 'pt-BR,pt;q=0.9'
-      },
-      body: `q=${encodeURIComponent(searchTerm)}`
-    });
+    const subQueries = [
+      `${query} ${locationName}`,
+      `site:instagram.com ${query} ${locationName}`,
+      `site:instagram.com clinica ${query} ${locationName}`,
+      `${query} ${locationName} telefone whatsapp`
+    ];
 
-    if (!res.ok) return [];
+    async function fetchSingleDdg(q) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3500);
 
-    const html = await res.text();
-    const rows = html.split('<tr');
-    const places = [];
+        const params = new URLSearchParams();
+        params.append('q', q);
+        params.append('b', '');
+        params.append('kl', 'br-pt');
 
-    for (let i = 0; i < rows.length; i++) {
-      const tr = rows[i];
-      const linkMatch = tr.match(/<a[^>]*href="([^"]+)"[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/i) ||
-                        tr.match(/<a[^>]*class=['"]result-link['"][^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+        const res = await fetch('https://lite.duckduckgo.com/lite/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept-Language': 'pt-BR,pt;q=0.9'
+          },
+          body: params.toString(),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
 
-      if (linkMatch) {
-        let rawUrl = linkMatch[1];
-        if (rawUrl.includes('uddg=')) {
-          const u = rawUrl.match(/uddg=([^&]+)/);
-          if (u) rawUrl = decodeURIComponent(u[1]);
-        }
+        if (!res.ok) return [];
+        const html = await res.text();
+        const rows = html.split('<tr');
+        const items = [];
 
-        let rawTitle = linkMatch[2].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
-        rawTitle = rawTitle.replace(/^\d+\.\s*/, '');
+        for (let i = 0; i < rows.length; i++) {
+          const tr = rows[i];
+          const linkMatch = tr.match(/<a[^>]*href="([^"]+)"[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/i) ||
+                            tr.match(/<a[^>]*class=['"]result-link['"][^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+          if (linkMatch) {
+            let rawUrl = linkMatch[1];
+            if (rawUrl.includes('uddg=')) {
+              const u = rawUrl.match(/uddg=([^&]+)/);
+              if (u) rawUrl = decodeURIComponent(u[1]);
+            }
 
-        let snippet = '';
-        if (i + 1 < rows.length) {
-          const snipMatch = rows[i + 1].match(/<td[^>]*class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/i);
-          if (snipMatch) {
-            snippet = snipMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
+            let rawTitle = linkMatch[2].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
+            rawTitle = rawTitle.replace(/^\d+\.\s*/, '');
+
+            let snippet = '';
+            if (i + 1 < rows.length) {
+              const snipMatch = rows[i + 1].match(/<td[^>]*class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/i);
+              if (snipMatch) {
+                snippet = snipMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
+              }
+            }
+
+            items.push({ rawTitle, rawUrl, snippet });
           }
         }
+        return items;
+      } catch (e) {
+        return [];
+      }
+    }
 
-        // Filter aggregator spam
-        const lowerTitle = rawTitle.toLowerCase();
-        if (lowerTitle.includes('os 20 melhores') || lowerTitle.includes('encontre dentistas') || lowerTitle.includes('vagas de emprego') || lowerTitle.includes('salário')) {
-          continue;
-        }
+    const allBatches = await Promise.all(subQueries.map(fetchSingleDdg));
+    const allItems = allBatches.flat();
+    if (allItems.length === 0) return [];
 
-        let cleanName = rawTitle.split(' - ')[0].split(' | ')[0].trim();
-        cleanName = cleanName.replace(/em [A-Za-z\s]+.*$/i, '').trim();
-        if (cleanName.length < 3) cleanName = rawTitle.slice(0, 45);
+    const businessMap = new Map();
+    const instagramProfiles = [];
 
-        // Extract phone from snippet
-        const phoneMatch = snippet.match(/(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}/);
-        const phone = phoneMatch ? phoneMatch[0].trim() : null;
+    allItems.forEach(item => {
+      const { rawTitle, rawUrl, snippet } = item;
 
-        // Extract social/website
-        const isSocialOrDir = rawUrl.includes('facebook.com') || rawUrl.includes('instagram.com') || rawUrl.includes('doctoralia.com') || rawUrl.includes('guiamais.com') || rawUrl.includes('solutudo.com') || rawUrl.includes('telelistas.net');
-        const websiteUri = isSocialOrDir ? null : rawUrl;
-        const instagramUrl = rawUrl.includes('instagram.com') ? rawUrl : null;
-        const facebookUrl = rawUrl.includes('facebook.com') ? rawUrl : null;
+      // Check for Instagram profile
+      const instaMatch = rawUrl.match(/instagram\.com\/([a-zA-Z0-9._]+)\/?/i);
+      if (instaMatch && !['p', 'explore', 'stories', 'reel', 'tv', 'direct', 'locations'].includes(instaMatch[1].toLowerCase())) {
+        const handle = '@' + instaMatch[1].replace('@', '');
+        let cleanName = rawTitle.split('(')[0].split('•')[0].split('-')[0].replace(/Instagram/i, '').replace(/fotos e vídeos/i, '').trim();
+        if (!cleanName || cleanName.length < 3) cleanName = handle;
 
-        // Spread points around target coordinates for visual clustering on map
-        const jitterLat = lat + ((places.length % 5) - 2) * 0.004;
-        const jitterLng = lng + (Math.floor(places.length / 5) - 1) * 0.004;
-
-        places.push({
-          id: `web_free_${places.length + 1}_${Date.now()}`,
-          place_id: `web_free_${places.length + 1}`,
+        instagramProfiles.push({
           name: cleanName,
-          displayName: { text: cleanName, languageCode: 'pt-BR' },
-          formattedAddress: snippet.length > 10 ? `${snippet.slice(0, 85)}... - ${locationName}` : `${locationName}`,
-          location: { latitude: jitterLat, longitude: jitterLng },
-          lat: jitterLat,
-          lng: jitterLng,
-          category: query,
-          primaryType: query,
-          primaryTypeDisplayName: { text: query, languageCode: 'pt-BR' },
-          nationalPhoneNumber: phone,
-          internationalPhoneNumber: phone,
-          websiteUri: websiteUri,
-          hasWebsite: Boolean(websiteUri),
-          socials: {
-            instagram: instagramUrl ? { url: instagramUrl, handle: '@' + instagramUrl.split('/').filter(Boolean).pop() } : null,
-            facebook: facebookUrl ? { url: facebookUrl } : null
-          },
-          rating: 4.8,
-          userRatingCount: 15 + (places.length * 7) % 35,
-          businessStatus: 'OPERATIONAL',
-          sourceProvider: 'Web Aberta (Dados Reais 100% Gratuitos)',
-          googleMapsUri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${cleanName} ${locationName}`)}`
+          handle,
+          url: `https://www.instagram.com/${instaMatch[1]}/`,
+          snippet
+        });
+        return;
+      }
+
+      // Business row filtering
+      const lower = rawTitle.toLowerCase();
+      if (lower.includes('os 20 melhores') || lower.includes('encontre dentistas') || lower.includes('vagas de emprego') || lower.includes('salário')) {
+        return;
+      }
+
+      let cleanName = rawTitle.split(' - ')[0].split(' | ')[0].split(' · ')[0].trim();
+      cleanName = cleanName.replace(/em [A-Za-z\s]+.*$/i, '').trim();
+      if (cleanName.length < 3) cleanName = rawTitle.slice(0, 45);
+
+      const phoneMatch = (snippet + ' ' + rawTitle).match(/(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}/);
+      const phone = phoneMatch ? phoneMatch[0].trim() : null;
+
+      const isSocialOrDir = rawUrl.includes('facebook.com') || rawUrl.includes('instagram.com') || rawUrl.includes('doctoralia.com') || rawUrl.includes('guiamais.com') || rawUrl.includes('solutudo.com') || rawUrl.includes('telelistas.net') || rawUrl.includes('agendarconsulta.com');
+      const websiteUri = isSocialOrDir ? null : rawUrl;
+      const facebookUrl = rawUrl.includes('facebook.com') ? rawUrl : null;
+
+      const key = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+      if (!businessMap.has(key)) {
+        businessMap.set(key, {
+          name: cleanName,
+          address: snippet.length > 10 ? `${snippet.slice(0, 85)}... - ${locationName}` : `${locationName}`,
+          phone,
+          websiteUri,
+          facebookUrl,
+          instagram: null,
+          snippet
         });
       }
+    });
+
+    // Pair Instagram profiles or add standalone Instagram leads
+    instagramProfiles.forEach(ig => {
+      let matched = false;
+      const igKey = ig.name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12);
+      for (const [key, biz] of businessMap.entries()) {
+        if (key.includes(igKey) || igKey.includes(key) || ig.handle.toLowerCase().includes(key)) {
+          biz.instagram = { handle: ig.handle, url: ig.url };
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        const phoneMatch = ig.snippet.match(/(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}/);
+        const key = `ig_${ig.handle.replace(/[^a-z0-9]/g, '')}`;
+        if (!businessMap.has(key)) {
+          businessMap.set(key, {
+            name: ig.name,
+            address: `${ig.snippet.slice(0, 80)}... - ${locationName}`,
+            phone: phoneMatch ? phoneMatch[0].trim() : null,
+            websiteUri: null,
+            facebookUrl: null,
+            instagram: { handle: ig.handle, url: ig.url },
+            snippet: ig.snippet
+          });
+        }
+      }
+    });
+
+    // Format final places
+    const places = [];
+    let count = 0;
+    for (const [, biz] of businessMap.entries()) {
+      count++;
+      const jitterLat = lat + ((count % 6) - 2.5) * 0.0035;
+      const jitterLng = lng + (Math.floor(count / 6) - 1.5) * 0.0035;
+
+      places.push({
+        id: `web_free_${count}_${Date.now()}`,
+        place_id: `web_free_${count}`,
+        name: biz.name,
+        displayName: { text: biz.name, languageCode: 'pt-BR' },
+        formattedAddress: biz.address,
+        location: { latitude: jitterLat, longitude: jitterLng },
+        lat: jitterLat,
+        lng: jitterLng,
+        category: query,
+        primaryType: query,
+        primaryTypeDisplayName: { text: query, languageCode: 'pt-BR' },
+        nationalPhoneNumber: biz.phone,
+        internationalPhoneNumber: biz.phone,
+        websiteUri: biz.websiteUri,
+        hasWebsite: Boolean(biz.websiteUri),
+        socials: {
+          instagram: biz.instagram,
+          facebook: biz.facebookUrl ? { url: biz.facebookUrl } : null
+        },
+        rating: 4.8,
+        userRatingCount: 15 + (count * 7) % 35,
+        businessStatus: 'OPERATIONAL',
+        sourceProvider: 'Web Aberta (Dados Reais 100% Gratuitos)',
+        googleMapsUri: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${biz.name} ${locationName}`)}`
+      });
     }
 
     return places;

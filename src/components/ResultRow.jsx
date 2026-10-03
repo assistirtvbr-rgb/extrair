@@ -60,7 +60,7 @@ export default function ResultRow({
   const reviews = place.userRatingCount || 0;
   const distance = place.distanceKm;
 
-  const dp = place.digitalPresence || leadData.digitalPresence || {};
+  const dp = { ...(place.socials || {}), ...(place.digitalPresence || {}), ...(leadData.digitalPresence || {}) };
   const status = leadData.status || 'Novo';
   const nextAction = leadData.nextAction;
 

@@ -323,7 +323,7 @@ export default function ResultsList({
                 const phone = place.nationalPhoneNumber || place.phone;
                 const rawWeb = place.websiteUri || place.website;
                 const leadData = leadStore[placeId] || {};
-                const dp = place.digitalPresence || leadData.digitalPresence || {};
+                const dp = { ...(place.socials || {}), ...(place.digitalPresence || {}), ...(leadData.digitalPresence || {}) };
 
                 return (
                   <tr 
