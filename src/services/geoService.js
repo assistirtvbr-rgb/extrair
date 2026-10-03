@@ -1,17 +1,27 @@
 /**
- * Service for geocoding addresses and browser geolocation
+ * Accurate Geocoding & Geolocation Service
+ * Uses OpenStreetMap Nominatim with strict validation and no silent fallback to wrong cities.
  */
+
+export class LocationNotFoundError extends Error {
+  constructor(query) {
+    super(`Não foi possível localizar o endereço "${query}". Por favor, informe uma cidade, bairro ou CEP mais específico (ex: "Belford Roxo - RJ" ou "Tijuca, Rio de Janeiro").`);
+    this.name = 'LocationNotFoundError';
+    this.query = query;
+  }
+}
 
 export const geoService = {
   /**
-   * Geocode an address/neighborhood/city to lat/lng
+   * Geocode an address/neighborhood/city to lat/lng accurately
    */
-  async geocode(query) {
-    if (!query || !query.trim()) return null;
+  async geocode(query, isDemo = false) {
+    if (!query || !query.trim()) {
+      throw new Error('Digite um endereço, cidade ou bairro para pesquisar.');
+    }
 
     const trimmed = query.trim();
 
-    // Primary: OpenStreetMap Nominatim with Brazilian focus
     try {
       const sanitized = encodeURIComponent(trimmed);
       const url = `https://nominatim.openstreetmap.org/search?q=${sanitized}&format=json&countrycodes=br&limit=1&addressdetails=1`;
@@ -19,7 +29,7 @@ export const geoService = {
       const response = await fetch(url, {
         headers: {
           'Accept-Language': 'pt-BR,pt;q=0.9',
-          'User-Agent': 'LeadMap-App/1.0'
+          'User-Agent': 'LeadMap-App/2.0'
         }
       });
 
@@ -40,60 +50,56 @@ export const geoService = {
         }
       }
     } catch (e) {
-      console.warn('Nominatim geocode failed, using known coordinates:', e);
+      console.warn('Nominatim network lookup issue:', e);
     }
 
-    // Common Brazilian locations lookup dictionary
-    const commonLocations = {
-      'belford roxo': { lat: -22.7639, lng: -43.3994, displayName: 'Belford Roxo - RJ' },
-      'nova iguacu': { lat: -22.7562, lng: -43.4608, displayName: 'Nova Iguaçu - RJ' },
-      'duque de caxias': { lat: -22.7858, lng: -43.3054, displayName: 'Duque de Caxias - RJ' },
-      'sao goncalo': { lat: -22.8268, lng: -43.0537, displayName: 'São Gonçalo - RJ' },
-      'niteroi': { lat: -22.8832, lng: -43.1034, displayName: 'Niterói - RJ' },
-      'tijuca': { lat: -22.9248, lng: -43.2326, displayName: 'Tijuca, Rio de Janeiro - RJ' },
-      'barra da tijuca': { lat: -23.0004, lng: -43.3659, displayName: 'Barra da Tijuca, Rio de Janeiro - RJ' },
-      'copacabana': { lat: -22.9711, lng: -43.1822, displayName: 'Copacabana, Rio de Janeiro - RJ' },
-      'ipanema': { lat: -22.9836, lng: -43.2045, displayName: 'Ipanema, Rio de Janeiro - RJ' },
-      'centro, rio de janeiro': { lat: -22.9068, lng: -43.1729, displayName: 'Centro, Rio de Janeiro - RJ' },
-      'sao paulo': { lat: -23.5505, lng: -46.6333, displayName: 'São Paulo - SP' },
-      'paulista': { lat: -23.5615, lng: -46.6559, displayName: 'Avenida Paulista, São Paulo - SP' },
-      'campinas': { lat: -22.9099, lng: -47.0626, displayName: 'Campinas - SP' },
-      'curitiba': { lat: -25.4284, lng: -49.2733, displayName: 'Curitiba - PR' },
-      'belo horizonte': { lat: -19.9167, lng: -43.9345, displayName: 'Belo Horizonte - MG' },
-      'porto alegre': { lat: -30.0346, lng: -51.2177, displayName: 'Porto Alegre - RS' },
-      'salvador': { lat: -12.9777, lng: -38.5016, displayName: 'Salvador - BA' },
-      'fortaleza': { lat: -3.7319, lng: -38.5267, displayName: 'Fortaleza - CE' },
-      'recife': { lat: -8.0476, lng: -34.8770, displayName: 'Recife - PE' },
-      'brasilia': { lat: -15.7975, lng: -47.8919, displayName: 'Brasília - DF' }
-    };
+    // In Demo mode, provide well-known Brazilian municipal centers if Nominatim is unreachable
+    if (isDemo) {
+      const knownLocations = {
+        'belford roxo': { lat: -22.7639, lng: -43.3994, displayName: 'Belford Roxo - RJ' },
+        'nova iguacu': { lat: -22.7562, lng: -43.4608, displayName: 'Nova Iguaçu - RJ' },
+        'duque de caxias': { lat: -22.7858, lng: -43.3054, displayName: 'Duque de Caxias - RJ' },
+        'sao goncalo': { lat: -22.8268, lng: -43.0537, displayName: 'São Gonçalo - RJ' },
+        'niteroi': { lat: -22.8832, lng: -43.1034, displayName: 'Niterói - RJ' },
+        'tijuca': { lat: -22.9248, lng: -43.2326, displayName: 'Tijuca, Rio de Janeiro - RJ' },
+        'barra da tijuca': { lat: -23.0004, lng: -43.3659, displayName: 'Barra da Tijuca, Rio de Janeiro - RJ' },
+        'copacabana': { lat: -22.9711, lng: -43.1822, displayName: 'Copacabana, Rio de Janeiro - RJ' },
+        'centro rio': { lat: -22.9068, lng: -43.1729, displayName: 'Centro, Rio de Janeiro - RJ' },
+        'sao paulo': { lat: -23.5505, lng: -46.6333, displayName: 'São Paulo - SP' },
+        'campinas': { lat: -22.9099, lng: -47.0626, displayName: 'Campinas - SP' },
+        'curitiba': { lat: -25.4284, lng: -49.2733, displayName: 'Curitiba - PR' },
+        'belo horizonte': { lat: -19.9167, lng: -43.9345, displayName: 'Belo Horizonte - MG' },
+        'porto alegre': { lat: -30.0346, lng: -51.2177, displayName: 'Porto Alegre - RS' },
+        'brasilia': { lat: -15.7975, lng: -47.8919, displayName: 'Brasília - DF' }
+      };
 
-    const clean = trimmed.toLowerCase();
-    for (const [key, val] of Object.entries(commonLocations)) {
-      if (clean.includes(key)) {
-        return {
-          lat: val.lat,
-          lng: val.lng,
-          displayName: val.displayName,
-          name: trimmed
-        };
+      const lower = trimmed.toLowerCase();
+      for (const [key, val] of Object.entries(knownLocations)) {
+        if (lower.includes(key)) {
+          return {
+            lat: val.lat,
+            lng: val.lng,
+            displayName: val.displayName,
+            name: trimmed
+          };
+        }
       }
     }
 
-    return {
-      lat: -22.7639,
-      lng: -43.3994,
-      displayName: trimmed,
-      name: trimmed
-    };
+    // Never return a wrong city in live mode: explicitly throw error so user refines input
+    throw new LocationNotFoundError(trimmed);
   },
 
+  /**
+   * Reverse geocode coordinates to human readable name
+   */
   async reverseGeocode(lat, lng) {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
       const response = await fetch(url, {
         headers: {
           'Accept-Language': 'pt-BR,pt;q=0.9',
-          'User-Agent': 'LeadMap-App/1.0'
+          'User-Agent': 'LeadMap-App/2.0'
         }
       });
       if (response.ok) {
@@ -101,8 +107,9 @@ export const geoService = {
         const address = data.address || {};
         const suburb = address.suburb || address.neighbourhood || address.city_district;
         const city = address.city || address.town || address.municipality;
+        const state = address.state;
         if (suburb && city) {
-          return `${suburb}, ${city}`;
+          return `${suburb}, ${city}${state ? ' - ' + state : ''}`;
         }
         return data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       }
@@ -112,6 +119,9 @@ export const geoService = {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   },
 
+  /**
+   * Browser Geolocation GPS
+   */
   getCurrentLocation() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -134,6 +144,10 @@ export const geoService = {
           let message = 'Não foi possível obter sua localização.';
           if (error.code === error.PERMISSION_DENIED) {
             message = 'Permissão de localização negada pelo usuário.';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            message = 'Informações de GPS indisponíveis.';
+          } else if (error.code === error.TIMEOUT) {
+            message = 'Tempo limite esgotado ao buscar GPS.';
           }
           reject(new Error(message));
         },

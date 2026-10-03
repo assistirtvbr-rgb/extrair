@@ -1,28 +1,121 @@
+/**
+ * LeadMap Persistent Storage Service (v2)
+ * Manages unified lead records across Lists, Favorites, Pipeline, Notes, and Digital Presence.
+ */
+
 const STORAGE_KEYS = {
-  LISTS: 'leadmap_lists',
-  FAVORITES: 'leadmap_favorites',
-  HISTORY: 'leadmap_history',
-  LEAD_METADATA: 'leadmap_lead_metadata',
-  SETTINGS: 'leadmap_settings'
+  SCHEMA_VERSION: 'leadmap_schema_version',
+  LEADS_V2: 'leadmap_leads_v2',
+  LISTS: 'leadmap_lists_v2',
+  HISTORY: 'leadmap_history_v2',
+  SETTINGS: 'leadmap_settings_v2',
+  // Legacy keys for migration
+  LEGACY_LISTS: 'leadmap_lists',
+  LEGACY_FAVORITES: 'leadmap_favorites',
+  LEGACY_LEAD_METADATA: 'leadmap_lead_metadata',
+  LEGACY_SETTINGS: 'leadmap_settings',
+  LEGACY_HISTORY: 'leadmap_history'
 };
 
+const CURRENT_SCHEMA_VERSION = 2;
+
 const DEFAULT_SETTINGS = {
-  workerApiUrl: import.meta.env.VITE_WORKER_API_URL || 'http://localhost:8787/api/search',
+  workerApiUrl: '/api/search',
   defaultRadiusKm: 5,
   defaultSort: 'distance',
   autoSaveHistory: true,
+  splitRatio: 42, // list 42% / map 58%
+  demoMode: true, // explicit Demo Mode vs Live Mode
   tableColumns: {
     name: true,
     category: true,
-    rating: true,
+    score: true,
     phone: true,
-    website: true,
+    digitalPresence: true,
+    rating: true,
+    reviews: true,
     distance: true,
-    address: true,
-    status: true,
-    tags: true
+    crmStatus: true,
+    nextAction: true
   }
 };
+
+/**
+ * Migration helper from v1 storage layout to unified v2 schema
+ */
+function runMigrations() {
+  try {
+    const version = parseInt(localStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION) || '1', 10);
+    if (version < CURRENT_SCHEMA_VERSION) {
+      const leadsV2 = {};
+
+      // Migrate legacy lead metadata
+      const legacyMeta = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEGACY_LEAD_METADATA) || '{}');
+      Object.entries(legacyMeta).forEach(([placeId, meta]) => {
+        leadsV2[placeId] = {
+          placeId,
+          status: meta.status || 'Novo',
+          tags: meta.tags || [],
+          notes: meta.notes || '',
+          nextAction: meta.nextAction || '',
+          returnDate: meta.returnDate || null,
+          priority: meta.priority || 'Média',
+          lossReason: meta.lossReason || '',
+          activityLog: meta.activityLog || [],
+          digitalPresence: meta.digitalPresence || {},
+          isFavorite: false,
+          updatedAt: meta.updatedAt || new Date().toISOString()
+        };
+      });
+
+      // Migrate legacy favorites
+      const legacyFavs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEGACY_FAVORITES) || '[]');
+      legacyFavs.forEach(fav => {
+        const id = fav.id || fav.place_id;
+        if (id) {
+          if (!leadsV2[id]) {
+            leadsV2[id] = {
+              placeId: id,
+              status: 'Novo',
+              tags: [],
+              notes: '',
+              nextAction: '',
+              returnDate: null,
+              priority: 'Média',
+              activityLog: [],
+              digitalPresence: {},
+              cachedData: fav,
+              isFavorite: true,
+              updatedAt: new Date().toISOString()
+            };
+          } else {
+            leadsV2[id].isFavorite = true;
+            leadsV2[id].cachedData = fav;
+          }
+        }
+      });
+
+      // Save unified leads
+      localStorage.setItem(STORAGE_KEYS.LEADS_V2, JSON.stringify(leadsV2));
+
+      // Migrate legacy lists
+      const legacyLists = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEGACY_LISTS) || '[]');
+      if (legacyLists.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.LISTS, JSON.stringify(legacyLists));
+      }
+
+      // Mark migration complete
+      localStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(CURRENT_SCHEMA_VERSION));
+    }
+  } catch (err) {
+    console.warn('Storage migration warning:', err);
+  }
+}
+
+// Run migrations on module load
+if (typeof window !== 'undefined') {
+  runMigrations();
+}
 
 export const storageService = {
   // Settings
@@ -34,13 +127,119 @@ export const storageService = {
       return DEFAULT_SETTINGS;
     }
   },
-  
+
   saveSettings(settings) {
     try {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     } catch (e) {
-      console.error('Failed to save settings to localStorage', e);
+      console.error('Failed to save settings', e);
     }
+  },
+
+  // Unified Leads Store (Pipeline, Tags, Notes, Next Action, Activity Log)
+  getAllLeads() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.LEADS_V2);
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  getLead(placeId) {
+    if (!placeId) return null;
+    const all = this.getAllLeads();
+    return all[placeId] || {
+      placeId,
+      status: 'Novo',
+      tags: [],
+      notes: '',
+      nextAction: '',
+      returnDate: null,
+      priority: 'Média',
+      lossReason: '',
+      activityLog: [],
+      digitalPresence: {},
+      isFavorite: false
+    };
+  },
+
+  updateLead(placeId, updates = {}, placeData = null) {
+    if (!placeId) return null;
+    try {
+      const all = this.getAllLeads();
+      const current = all[placeId] || {
+        placeId,
+        status: 'Novo',
+        tags: [],
+        notes: '',
+        nextAction: '',
+        returnDate: null,
+        priority: 'Média',
+        lossReason: '',
+        activityLog: [],
+        digitalPresence: {},
+        isFavorite: false
+      };
+
+      const merged = {
+        ...current,
+        ...updates,
+        placeId,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (placeData) {
+        merged.cachedData = {
+          ...(current.cachedData || {}),
+          ...placeData
+        };
+      }
+
+      all[placeId] = merged;
+      localStorage.setItem(STORAGE_KEYS.LEADS_V2, JSON.stringify(all));
+      return merged;
+    } catch (e) {
+      console.error('Failed to update lead', e);
+      return null;
+    }
+  },
+
+  addLeadActivity(placeId, activityDescription, type = 'note') {
+    if (!placeId || !activityDescription) return;
+    const lead = this.getLead(placeId);
+    const newActivity = {
+      id: 'act_' + Date.now(),
+      timestamp: new Date().toISOString(),
+      type,
+      description: activityDescription.trim()
+    };
+    const log = [newActivity, ...(lead.activityLog || [])];
+    return this.updateLead(placeId, { activityLog: log.slice(0, 50) });
+  },
+
+  // Favorites
+  getFavorites() {
+    const all = this.getAllLeads();
+    return Object.values(all)
+      .filter(lead => lead.isFavorite)
+      .map(lead => lead.cachedData || { id: lead.placeId, name: 'Lead Favorito' });
+  },
+
+  isFavorite(placeId) {
+    if (!placeId) return false;
+    const lead = this.getLead(placeId);
+    return Boolean(lead?.isFavorite);
+  },
+
+  toggleFavorite(place) {
+    const placeId = place.id || place.place_id;
+    if (!placeId) return false;
+    const current = this.getLead(placeId);
+    const newFavStatus = !current.isFavorite;
+    
+    this.updateLead(placeId, { isFavorite: newFavStatus }, place);
+    return newFavStatus;
   },
 
   // Lists
@@ -60,10 +259,19 @@ export const storageService = {
         id: 'list_' + Date.now(),
         name: name.trim(),
         createdAt: new Date().toISOString(),
-        places: places // full or minimal objects
+        places
       };
       lists.unshift(newList);
       localStorage.setItem(STORAGE_KEYS.LISTS, JSON.stringify(lists));
+
+      // Cache places in leads store
+      places.forEach(p => {
+        const id = p.id || p.place_id;
+        if (id) {
+          this.updateLead(id, {}, p);
+        }
+      });
+
       return newList;
     } catch (e) {
       console.error('Failed to save list', e);
@@ -83,6 +291,7 @@ export const storageService = {
         if (!existingIds.has(id)) {
           list.places.push(p);
           existingIds.add(id);
+          this.updateLead(id, {}, p);
         }
       }
       localStorage.setItem(STORAGE_KEYS.LISTS, JSON.stringify(lists));
@@ -119,44 +328,6 @@ export const storageService = {
     }
   },
 
-  // Favorites
-  getFavorites() {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.FAVORITES);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  },
-
-  isFavorite(placeId) {
-    const favs = this.getFavorites();
-    return favs.some(f => (f.id || f.place_id) === placeId);
-  },
-
-  toggleFavorite(place) {
-    try {
-      let favs = this.getFavorites();
-      const placeId = place.id || place.place_id;
-      const index = favs.findIndex(f => (f.id || f.place_id) === placeId);
-      
-      if (index >= 0) {
-        favs.splice(index, 1);
-      } else {
-        favs.unshift({
-          ...place,
-          savedAt: new Date().toISOString()
-        });
-      }
-      
-      localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favs));
-      return index < 0; // returns true if now favorite
-    } catch (e) {
-      console.error('Failed to toggle favorite', e);
-      return false;
-    }
-  },
-
   // History
   getHistory() {
     try {
@@ -170,7 +341,6 @@ export const storageService = {
   addHistory(entry) {
     try {
       let history = this.getHistory();
-      // Remove duplicate recent identical searches
       history = history.filter(h => !(h.query === entry.query && h.locationName === entry.locationName && h.radiusKm === entry.radiusKm));
       
       const newEntry = {
@@ -185,8 +355,7 @@ export const storageService = {
       };
       
       history.unshift(newEntry);
-      // Keep max 50 items
-      if (history.length > 50) history.pop();
+      if (history.length > 40) history.pop();
       
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
       return newEntry;
@@ -200,42 +369,49 @@ export const storageService = {
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
   },
 
-  // Lead metadata: notes, tags, CRM status
-  getLeadMetadata(placeId) {
+  // Full Backup & Restore
+  exportBackupJSON() {
+    const backup = {
+      version: CURRENT_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      leads: this.getAllLeads(),
+      lists: this.getLists(),
+      history: this.getHistory(),
+      settings: this.getSettings()
+    };
+    return JSON.stringify(backup, null, 2);
+  },
+
+  importBackupJSON(jsonString) {
     try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAD_METADATA) || '{}');
-      return all[placeId] || { status: 'Novo', tags: [], notes: '' };
-    } catch {
-      return { status: 'Novo', tags: [], notes: '' };
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        throw new Error('Formato JSON inválido.');
+      }
+
+      if (data.leads && typeof data.leads === 'object') {
+        localStorage.setItem(STORAGE_KEYS.LEADS_V2, JSON.stringify(data.leads));
+      }
+      if (Array.isArray(data.lists)) {
+        localStorage.setItem(STORAGE_KEYS.LISTS, JSON.stringify(data.lists));
+      }
+      if (Array.isArray(data.history)) {
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(data.history));
+      }
+      if (data.settings && typeof data.settings === 'object') {
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data.settings));
+      }
+      return true;
+    } catch (err) {
+      console.error('Falha ao restaurar backup:', err);
+      throw err;
     }
   },
 
-  updateLeadMetadata(placeId, updates) {
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAD_METADATA) || '{}');
-      const current = all[placeId] || { status: 'Novo', tags: [], notes: '' };
-      all[placeId] = { ...current, ...updates, updatedAt: new Date().toISOString() };
-      localStorage.setItem(STORAGE_KEYS.LEAD_METADATA, JSON.stringify(all));
-      return all[placeId];
-    } catch (e) {
-      console.error('Failed to update lead metadata', e);
-      return null;
-    }
-  },
-
-  getAllLeadMetadata() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.LEAD_METADATA) || '{}');
-    } catch {
-      return {};
-    }
-  },
-
-  // Reset entire application data
   clearAllData() {
+    localStorage.removeItem(STORAGE_KEYS.LEADS_V2);
     localStorage.removeItem(STORAGE_KEYS.LISTS);
-    localStorage.removeItem(STORAGE_KEYS.FAVORITES);
     localStorage.removeItem(STORAGE_KEYS.HISTORY);
-    localStorage.removeItem(STORAGE_KEYS.LEAD_METADATA);
+    localStorage.removeItem(STORAGE_KEYS.SETTINGS);
   }
 };

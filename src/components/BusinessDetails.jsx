@@ -14,32 +14,41 @@ import {
   Tag as TagIcon, 
   Plus, 
   Radar as RadarIcon,
-  Building2,
-  Share2
+  Sparkles,
+  MessageCircle,
+  Instagram,
+  Linkedin,
+  Facebook,
+  Mail,
+  Calendar,
+  Search,
+  CheckCircle,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { extractCleanDomain } from '../utils/domain';
 import { formatPhone, getCategoryLabel } from '../utils/formatter';
 import { formatDistance } from '../utils/distance';
+import { calculateLeadScore } from '../utils/scoring';
+import { enrichmentService } from '../services/enrichmentService';
 
 const LEAD_STATUS_OPTIONS = [
-  { value: 'Novo', label: 'Novo Lead', color: '#6E716B', bg: '#F0EFEA' },
-  { value: 'Pesquisar', label: 'Pesquisar Mais', color: '#2F6B8F', bg: '#EDF5F9' },
-  { value: 'Contato futuro', label: 'Contato Futuro', color: '#854D0E', bg: '#FEF9C3' },
-  { value: 'Contato realizado', label: 'Contato Realizado', color: '#1E40AF', bg: '#DBEAFE' },
-  { value: 'Interessado', label: 'Interessado', color: '#166534', bg: '#DCFCE7' },
-  { value: 'Sem interesse', label: 'Sem Interesse', color: '#991B1B', bg: '#FEE2E2' },
-  { value: 'Cliente', label: 'Cliente Ativo', color: '#183D32', bg: '#DDEBE5' }
+  { value: 'Novo', label: 'Novo Lead' },
+  { value: 'Pesquisar', label: 'Pesquisar Mais' },
+  { value: 'Contato futuro', label: 'Contato Futuro' },
+  { value: 'Contato realizado', label: 'Contato Realizado' },
+  { value: 'Interessado', label: 'Interessado' },
+  { value: 'Sem interesse', label: 'Sem Interesse' },
+  { value: 'Cliente', label: 'Cliente Ativo' }
 ];
 
-const PRESET_TAGS = [
-  'Clínica grande',
-  'Site desatualizado',
-  'Sem Instagram',
-  'Alta avaliação',
-  'Concorrente direto',
-  'Cliente potencial',
-  'Telefone inválido',
-  'Ótima localização'
+const LOSS_REASONS = [
+  'Preço / Orçamento',
+  'Optou por concorrente',
+  'Sem demanda atual',
+  'Telefone / Contato inválido',
+  'Não respondeu às tentativas',
+  'Outro motivo'
 ];
 
 export default function BusinessDetails({
@@ -50,25 +59,42 @@ export default function BusinessDetails({
   onToggleFavorite,
   onAddToList,
   onOpenRadar,
-  leadMeta = {},
-  onUpdateLeadMeta
+  leadData = {},
+  onUpdateLead,
+  onAddActivity
 }) {
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [status, setStatus] = useState(leadMeta.status || 'Novo');
-  const [tags, setTags] = useState(leadMeta.tags || []);
-  const [notes, setNotes] = useState(leadMeta.notes || '');
+  const [saveIndicator, setSaveIndicator] = useState(null);
+  const [isEnriching, setIsEnriching] = useState(false);
+
+  // Form states
+  const [status, setStatus] = useState('Novo');
+  const [nextAction, setNextAction] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [priority, setPriority] = useState('Média');
+  const [lossReason, setLossReason] = useState('');
+  const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState([]);
   const [newTagInput, setNewTagInput] = useState('');
-  const [showTagInput, setShowTagInput] = useState(false);
+  const [newActivityInput, setNewActivityInput] = useState('');
+
+  // Manual social edit
+  const [manualPlatform, setManualPlatform] = useState('instagram');
+  const [manualUrl, setManualUrl] = useState('');
+  const [showAddManual, setShowAddManual] = useState(false);
 
   useEffect(() => {
     if (place) {
-      const placeId = place.id || place.place_id;
-      setStatus(leadMeta.status || 'Novo');
-      setTags(leadMeta.tags || []);
-      setNotes(leadMeta.notes || '');
+      setStatus(leadData.status || 'Novo');
+      setNextAction(leadData.nextAction || '');
+      setReturnDate(leadData.returnDate || '');
+      setPriority(leadData.priority || 'Média');
+      setLossReason(leadData.lossReason || '');
+      setNotes(leadData.notes || '');
+      setTags(leadData.tags || []);
     }
-  }, [place, leadMeta]);
+  }, [place, leadData]);
 
   if (!isOpen || !place) return null;
 
@@ -86,6 +112,18 @@ export default function BusinessDetails({
   const hours = place.currentOpeningHours?.weekdayDescriptions || [];
   const isOpenNow = place.currentOpeningHours?.openNow;
 
+  const dp = place.digitalPresence || leadData.digitalPresence || {};
+  const scoreData = calculateLeadScore(place, leadData);
+
+  const saveUpdates = (updates) => {
+    setSaveIndicator('saving');
+    onUpdateLead(placeId, updates, place);
+    setTimeout(() => {
+      setSaveIndicator('saved');
+      setTimeout(() => setSaveIndicator(null), 1800);
+    }, 200);
+  };
+
   const handleCopyPhone = () => {
     if (!phone) return;
     navigator.clipboard.writeText(phone);
@@ -100,122 +138,387 @@ export default function BusinessDetails({
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
-  const handleStatusChange = (newStatus) => {
-    setStatus(newStatus);
-    onUpdateLeadMeta(placeId, { status: newStatus, tags, notes });
+  const handleSingleEnrich = async () => {
+    setIsEnriching(true);
+    try {
+      const res = await enrichmentService.enrichLead(place);
+      if (res.channels) {
+        saveUpdates({ digitalPresence: res.channels });
+      }
+    } catch (err) {
+      console.warn('Enrichment failed:', err);
+    } finally {
+      setIsEnriching(false);
+    }
   };
 
-  const handleNotesBlur = () => {
-    onUpdateLeadMeta(placeId, { status, tags, notes });
+  const handleAddManualLink = () => {
+    if (!manualUrl.trim()) return;
+    const currentDP = { ...dp };
+    currentDP[manualPlatform] = {
+      platform: manualPlatform,
+      url: manualUrl.trim(),
+      handle: manualUrl.trim(),
+      source: 'Informado pelo usuário',
+      status: 'Confirmado pelo usuário',
+      discoveredAt: new Date().toISOString()
+    };
+    saveUpdates({ digitalPresence: currentDP });
+    setManualUrl('');
+    setShowAddManual(false);
+  };
+
+  const handleConfirmChannel = (platformKey) => {
+    const currentDP = { ...dp };
+    if (currentDP[platformKey]) {
+      currentDP[platformKey] = {
+        ...currentDP[platformKey],
+        status: 'Confirmado pelo usuário',
+        verifiedAt: new Date().toISOString()
+      };
+      saveUpdates({ digitalPresence: currentDP });
+    }
+  };
+
+  const handleAddActivitySubmit = (e) => {
+    e.preventDefault();
+    if (!newActivityInput.trim()) return;
+    onAddActivity(placeId, newActivityInput.trim(), 'interaction');
+    setNewActivityInput('');
   };
 
   const handleAddTag = (tagToAdd) => {
     const trimmed = tagToAdd.trim();
     if (!trimmed || tags.includes(trimmed)) return;
-    const updatedTags = [...tags, trimmed];
-    setTags(updatedTags);
+    const updated = [...tags, trimmed];
+    setTags(updated);
+    saveUpdates({ tags: updated });
     setNewTagInput('');
-    setShowTagInput(false);
-    onUpdateLeadMeta(placeId, { status, tags: updatedTags, notes });
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    const updatedTags = tags.filter(t => t !== tagToRemove);
-    setTags(updatedTags);
-    onUpdateLeadMeta(placeId, { status, tags: updatedTags, notes });
+    const updated = tags.filter(t => t !== tagToRemove);
+    setTags(updated);
+    saveUpdates({ tags: updated });
   };
 
   return (
-    <aside className="business-details-drawer open" aria-label="Detalhes do Estabelecimento">
-      {/* Header */}
-      <div className="drawer-header">
-        <div className="drawer-title-box">
-          <h2>{name}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-            <span className="result-category-badge">{getCategoryLabel(category)}</span>
-            {isOpenNow !== undefined && (
-              <span className={`badge ${isOpenNow ? 'badge-green' : 'badge-alert'}`}>
-                {isOpenNow ? 'Aberto agora' : 'Fechado no momento'}
-              </span>
-            )}
+    <>
+      <div className="drawer-backdrop" onClick={onClose} />
+      <aside className="business-details-drawer open" aria-label="Ficha Comercial">
+        {/* Drawer Header */}
+        <div className="modal-header">
+          <div style={{ minWidth: 0 }}>
+            <h2 style={{ fontSize: '15px', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {name}
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+              <span className="badge badge-neutral">{getCategoryLabel(category)}</span>
+              <span className="badge badge-lime tnum">Score {scoreData.totalScore}/100</span>
+              {saveIndicator && (
+                <span style={{ fontSize: '11px', color: 'var(--green-dark)', fontWeight: '600' }}>
+                  {saveIndicator === 'saving' ? 'Salvando...' : '✓ Salvo'}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <button className="btn-icon" onClick={onClose} aria-label="Fechar painel">
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="drawer-body">
-        {/* Quick Action Buttons */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button 
-            className="btn btn-primary btn-sm" 
-            onClick={() => onAddToList(place)}
-            style={{ flex: 1 }}
-          >
-            <BookmarkPlus size={14} />
-            Adicionar à lista
-          </button>
-
-          <button
-            className={`btn btn-secondary btn-sm ${isFavorite ? 'active' : ''}`}
-            onClick={() => onToggleFavorite(place)}
-            title="Favoritar estabelecimento"
-          >
-            <Bookmark size={14} fill={isFavorite ? '#EAB308' : 'none'} color={isFavorite ? '#EAB308' : 'currentColor'} />
-            {isFavorite ? 'Favorito' : 'Favoritar'}
-          </button>
-
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => onOpenRadar(place)}
-            title="Buscar concorrentes próximos"
-          >
-            <RadarIcon size={14} />
-            Radar
+          <button className="btn-icon" onClick={onClose} aria-label="Fechar ficha">
+            <X size={16} />
           </button>
         </div>
 
-        {/* Lead Qualification & CRM Status */}
-        <div className="detail-section">
-          <label className="detail-section-title">Qualificação do Lead (CRM)</label>
-          <div className="detail-card-box">
-            <div className="detail-item-row">
-              <span className="detail-item-label">Status do contato:</span>
-              <select
-                value={status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                className="status-badge-selector"
+        {/* Drawer Body */}
+        <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
+          
+          {/* Quick Action Buttons */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <button 
+              className="btn btn-primary btn-sm" 
+              onClick={() => onAddToList(place)}
+              style={{ flex: 1 }}
+            >
+              <BookmarkPlus size={13} />
+              Adicionar à lista
+            </button>
+
+            <button
+              className={`btn btn-secondary btn-sm ${isFavorite ? 'active' : ''}`}
+              onClick={() => onToggleFavorite(place)}
+            >
+              <Bookmark size={13} fill={isFavorite ? '#EAB308' : 'none'} color={isFavorite ? '#EAB308' : 'currentColor'} />
+              {isFavorite ? 'Favorito' : 'Favoritar'}
+            </button>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => onOpenRadar(place)}
+              title="Buscar concorrentes próximos"
+            >
+              <RadarIcon size={13} />
+              Radar
+            </button>
+          </div>
+
+          {/* SECTION 1: PRESENÇA DIGITAL E CANAIS */}
+          <div className="detail-section">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label className="detail-section-title">Presença Digital & Redes Sociais</label>
+              <button
+                className="btn btn-lime btn-sm"
+                onClick={handleSingleEnrich}
+                disabled={isEnriching || !rawWeb}
+                style={{ padding: '2px 7px', fontSize: '11px' }}
+                title={rawWeb ? "Escanear website da empresa para encontrar canais sociais" : "Empresa sem website cadastrado"}
               >
-                {LEAD_STATUS_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                {isEnriching ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                {isEnriching ? 'Rastreando...' : 'Rastrear Canais'}
+              </button>
             </div>
 
-            {/* Tags */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="detail-item-label" style={{ fontSize: '12px' }}>
-                  <TagIcon size={13} /> Tags comerciais:
+            <div className="detail-card-box">
+              {/* Website */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">
+                  <Globe size={13} /> Website Institucional
                 </span>
-                <button
-                  className="btn-ghost btn-sm"
-                  style={{ padding: '2px 6px', fontSize: '11px', color: 'var(--green-accent)' }}
-                  onClick={() => setShowTagInput(!showTagInput)}
-                >
-                  <Plus size={12} /> Adicionar tag
-                </button>
+                <div className="detail-item-value">
+                  {rawWeb ? (
+                    <a href={rawWeb} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
+                      {cleanDomain} <ExternalLink size={11} />
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>Sem website</span>
+                  )}
+                </div>
               </div>
 
-              {showTagInput && (
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+              {/* WhatsApp */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">
+                  <MessageCircle size={13} color="#128C7E" /> WhatsApp Comercial
+                </span>
+                <div className="detail-item-value">
+                  {dp.whatsapp?.url ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <a href={dp.whatsapp.url} target="_blank" rel="noopener noreferrer" style={{ color: '#128C7E', fontWeight: '600' }}>
+                        {dp.whatsapp.handle || 'Conversar'}
+                      </a>
+                      {dp.whatsapp.status !== 'Confirmado pelo usuário' && (
+                        <button className="btn-ghost" style={{ padding: '1px 4px', fontSize: '10px' }} onClick={() => handleConfirmChannel('whatsapp')}>
+                          ✓ Confirmar
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Não localizado</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Instagram */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">
+                  <Instagram size={13} color="#C13584" /> Instagram
+                </span>
+                <div className="detail-item-value">
+                  {dp.instagram?.url ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <a href={dp.instagram.url} target="_blank" rel="noopener noreferrer" style={{ color: '#C13584', fontWeight: '600' }}>
+                        {dp.instagram.handle || 'Abrir perfil'}
+                      </a>
+                      {dp.instagram.status !== 'Confirmado pelo usuário' && (
+                        <button className="btn-ghost" style={{ padding: '1px 4px', fontSize: '10px' }} onClick={() => handleConfirmChannel('instagram')}>
+                          ✓ Confirmar
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <a
+                      href={enrichmentService.getSearchUrlForPlatform(name, address, 'instagram')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '11px', color: 'var(--text-secondary)' }}
+                    >
+                      <Search size={11} /> Pesquisar perfil
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* LinkedIn */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">
+                  <Linkedin size={13} color="#0A66C2" /> LinkedIn
+                </span>
+                <div className="detail-item-value">
+                  {dp.linkedin?.url ? (
+                    <a href={dp.linkedin.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0A66C2', fontWeight: '600' }}>
+                      {dp.linkedin.handle || 'Perfil da Empresa'}
+                    </a>
+                  ) : (
+                    <a
+                      href={enrichmentService.getSearchUrlForPlatform(name, address, 'linkedin')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '11px', color: 'var(--text-secondary)' }}
+                    >
+                      <Search size={11} /> Pesquisar perfil
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Commercial Email */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">
+                  <Mail size={13} /> E-mail Comercial
+                </span>
+                <div className="detail-item-value">
+                  {dp.email?.address ? (
+                    <a href={`mailto:${dp.email.address}`} style={{ fontWeight: '500' }}>
+                      {dp.email.address}
+                    </a>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Não localizado</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Manual Link */}
+              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
+                {!showAddManual ? (
+                  <button
+                    type="button"
+                    className="btn-ghost btn-sm"
+                    onClick={() => setShowAddManual(true)}
+                    style={{ fontSize: '11px', padding: '2px 4px', color: 'var(--green-dark)' }}
+                  >
+                    + Adicionar canal ou rede manualmente
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <select
+                      value={manualPlatform}
+                      onChange={(e) => setManualPlatform(e.target.value)}
+                      style={{ padding: '3px 6px', fontSize: '11px' }}
+                    >
+                      <option value="instagram">Instagram</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="tiktok">TikTok</option>
+                      <option value="email">E-mail</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      placeholder="Cole o link ou @perfil"
+                      value={manualUrl}
+                      onChange={(e) => setManualUrl(e.target.value)}
+                      style={{ flex: 1, padding: '3px 6px', fontSize: '11px' }}
+                    />
+
+                    <button className="btn btn-primary btn-sm" onClick={handleAddManualLink} style={{ padding: '3px 8px' }}>
+                      Salvar
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setShowAddManual(false)} style={{ padding: '3px' }}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: QUALIFICAÇÃO COMERCIAL & PIPELINE (CRM) */}
+          <div className="detail-section">
+            <label className="detail-section-title">Acompanhamento & Pipeline Comercial</label>
+            <div className="detail-card-box">
+              {/* Status */}
+              <div className="detail-item-row">
+                <span className="detail-item-label">Status do Lead:</span>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    saveUpdates({ status: e.target.value });
+                  }}
+                  style={{ padding: '4px 8px', fontSize: '12px', fontWeight: '600' }}
+                >
+                  {LEAD_STATUS_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Loss reason if Sem interesse */}
+              {status === 'Sem interesse' && (
+                <div className="detail-item-row">
+                  <span className="detail-item-label" style={{ color: 'var(--terracotta)' }}>Motivo de perda:</span>
+                  <select
+                    value={lossReason}
+                    onChange={(e) => {
+                      setLossReason(e.target.value);
+                      saveUpdates({ lossReason: e.target.value });
+                    }}
+                    style={{ padding: '3px 6px', fontSize: '11.5px' }}
+                  >
+                    <option value="">Selecione um motivo</option>
+                    {LOSS_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Next Action & Return Date */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
+                <span className="detail-item-label" style={{ fontSize: '12px' }}>
+                  <Calendar size={13} /> Próxima Ação & Retorno
+                </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
                   <input
                     type="text"
-                    placeholder="Nome da tag (ex: Potencial alto)"
+                    placeholder="Ex: Enviar proposta por WhatsApp"
+                    value={nextAction}
+                    onChange={(e) => setNextAction(e.target.value)}
+                    onBlur={() => saveUpdates({ nextAction })}
+                    style={{ flex: 1, padding: '4px 8px', fontSize: '12px' }}
+                  />
+                  <input
+                    type="date"
+                    value={returnDate}
+                    onChange={(e) => {
+                      setReturnDate(e.target.value);
+                      saveUpdates({ returnDate: e.target.value });
+                    }}
+                    style={{ padding: '4px 6px', fontSize: '12px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="detail-item-label" style={{ fontSize: '12px' }}>
+                    <TagIcon size={12} /> Tags comerciais:
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {tags.map(tag => (
+                    <span key={tag} className="tag-pill">
+                      {tag}
+                      <span className="remove-tag-btn" onClick={() => handleRemoveTag(tag)}>×</span>
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                  <input
+                    type="text"
+                    placeholder="Nova tag..."
                     value={newTagInput}
                     onChange={(e) => setNewTagInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -224,188 +527,119 @@ export default function BusinessDetails({
                         handleAddTag(newTagInput);
                       }
                     }}
-                    style={{ flex: 1, padding: '4px 8px', fontSize: '12px' }}
+                    style={{ flex: 1, padding: '3px 6px', fontSize: '11.5px' }}
                   />
-                  <button className="btn btn-primary btn-sm" onClick={() => handleAddTag(newTagInput)}>
-                    OK
+                  <button className="btn btn-secondary btn-sm" onClick={() => handleAddTag(newTagInput)}>
+                    + Tag
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: ATIVIDADES & NOTAS COMERCIAIS */}
+          <div className="detail-section">
+            <label className="detail-section-title">Notas & Histórico de Interações</label>
+            <div className="detail-card-box">
+              <textarea
+                className="notes-textarea"
+                placeholder="Anotações comerciais sobre tomador de decisão, objeções ou propostas..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={() => saveUpdates({ notes })}
+                style={{ minHeight: '60px' }}
+              />
+
+              {/* Activity Log */}
+              <form onSubmit={handleAddActivitySubmit} style={{ display: 'flex', gap: '4px' }}>
+                <input
+                  type="text"
+                  placeholder="Registrar contato (ex: Ligação realizada - sem resposta)"
+                  value={newActivityInput}
+                  onChange={(e) => setNewActivityInput(e.target.value)}
+                  style={{ flex: 1, padding: '4px 6px', fontSize: '11.5px' }}
+                />
+                <button type="submit" className="btn btn-secondary btn-sm" disabled={!newActivityInput.trim()}>
+                  Registrar
+                </button>
+              </form>
+
+              {leadData.activityLog?.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '110px', overflowY: 'auto' }}>
+                  {leadData.activityLog.map(act => (
+                    <div key={act.id} style={{ fontSize: '11px', padding: '3px 6px', background: 'var(--bg-panel)', borderRadius: '3px', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{new Date(act.timestamp).toLocaleDateString('pt-BR')} {new Date(act.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} — </span>
+                      <span>{act.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 4: CONTATO, LOCALIZAÇÃO & GOOGLE MAPS */}
+          <div className="detail-section">
+            <label className="detail-section-title">Contato & Endereço</label>
+            <div className="detail-card-box">
+              {phone && (
+                <div className="detail-item-row">
+                  <span className="detail-item-label">
+                    <Phone size={13} /> Telefone
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="detail-item-value">{formatPhone(phone)}</span>
+                    <button className="btn-icon" onClick={handleCopyPhone} style={{ padding: '2px' }}>
+                      {copiedPhone ? <Check size={13} color="var(--green-dark)" /> : <Copy size={13} />}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <div className="tags-list">
-                {tags.map(tag => (
-                  <span key={tag} className="tag-pill">
-                    {tag}
-                    <span className="remove-tag-btn" onClick={() => handleRemoveTag(tag)}>×</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span className="detail-item-label">
+                    <MapPin size={13} /> Endereço
                   </span>
-                ))}
-                {tags.length === 0 && !showTagInput && (
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nenhuma tag adicionada.</span>
-                )}
-              </div>
-
-              {/* Tag suggestions */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                {PRESET_TAGS.filter(t => !tags.includes(t)).slice(0, 4).map(preset => (
-                  <button
-                    key={preset}
-                    className="quick-chip"
-                    style={{ fontSize: '10px', padding: '1px 6px' }}
-                    onClick={() => handleAddTag(preset)}
-                  >
-                    + {preset}
+                  <button className="btn-icon" onClick={handleCopyAddress} style={{ padding: '2px' }}>
+                    {copiedAddress ? <Check size={13} color="var(--green-dark)" /> : <Copy size={13} />}
                   </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact & Location Details */}
-        <div className="detail-section">
-          <label className="detail-section-title">Informações de Contato & Endereço</label>
-          <div className="detail-card-box">
-            {/* Phone */}
-            <div className="detail-item-row">
-              <span className="detail-item-label">
-                <Phone size={14} /> Telefone
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span className="detail-item-value">{phone ? formatPhone(phone) : 'Não informado'}</span>
-                {phone && (
-                  <button
-                    className="btn-icon"
-                    onClick={handleCopyPhone}
-                    title={copiedPhone ? 'Copiado!' : 'Copiar telefone'}
-                    style={{ padding: '3px' }}
-                  >
-                    {copiedPhone ? <Check size={14} color="var(--green-accent)" /> : <Copy size={14} />}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Website */}
-            <div className="detail-item-row">
-              <span className="detail-item-label">
-                <Globe size={14} /> Website
-              </span>
-              <div className="detail-item-value">
-                {rawWeb ? (
-                  <a 
-                    href={rawWeb} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--green-accent)', fontWeight: '600' }}
-                  >
-                    {cleanDomain}
-                    <ExternalLink size={12} />
-                  </a>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>Sem website cadastrado</span>
-                )}
-              </div>
-            </div>
-
-            {/* Address */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="detail-item-label">
-                  <MapPin size={14} /> Endereço completo
-                </span>
-                <button
-                  className="btn-icon"
-                  onClick={handleCopyAddress}
-                  title={copiedAddress ? 'Copiado!' : 'Copiar endereço'}
-                  style={{ padding: '3px' }}
-                >
-                  {copiedAddress ? <Check size={14} color="var(--green-accent)" /> : <Copy size={14} />}
-                </button>
-              </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.4' }}>
-                {address}
-              </p>
-            </div>
-
-            {/* Distance & Maps link */}
-            <div className="detail-item-row" style={{ paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
-              <span className="detail-item-label">Distância da busca:</span>
-              <span className="detail-item-value">{formatDistance(distance)}</span>
-            </div>
-
-            <div className="detail-item-row">
-              <span className="detail-item-label">Google Maps:</span>
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '11px', padding: '3px 8px' }}
-              >
-                Abrir no Maps <ExternalLink size={11} />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Reputation & Reviews */}
-        <div className="detail-section">
-          <label className="detail-section-title">Avaliações & Reputação</label>
-          <div className="detail-card-box">
-            <div className="detail-item-row">
-              <span className="detail-item-label">Avaliação média:</span>
-              <span className="detail-item-value" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Star size={14} className="result-rating-star" />
-                {rating ? `${rating} / 5.0` : 'Sem nota'}
-              </span>
-            </div>
-
-            <div className="detail-item-row">
-              <span className="detail-item-label">Total de avaliações:</span>
-              <span className="detail-item-value">{reviews} reviews</span>
-            </div>
-
-            {placeId && (
-              <div className="detail-item-row">
-                <span className="detail-item-label">Place ID:</span>
-                <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                  {placeId.length > 20 ? placeId.substring(0, 18) + '...' : placeId}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Hours of Operation */}
-        {hours.length > 0 && (
-          <div className="detail-section">
-            <label className="detail-section-title">Horário de Funcionamento</label>
-            <div className="detail-card-box" style={{ gap: '6px' }}>
-              {hours.map((line, idx) => (
-                <div key={idx} style={{ fontSize: '12px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Clock size={12} style={{ color: 'var(--text-muted)' }} />
-                  {line}
                 </div>
-              ))}
+                <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                  {address}
+                </p>
+              </div>
+
+              <div className="detail-item-row" style={{ paddingTop: '4px', borderTop: '1px solid var(--border-subtle)' }}>
+                <span className="detail-item-label">Rota no Google Maps:</span>
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '11px', padding: '2px 7px' }}
+                >
+                  Abrir Mapa <ExternalLink size={10} />
+                </a>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Commercial Notes / Observações */}
-        <div className="detail-section">
-          <label className="detail-section-title">Observações Comerciais & Anotações</label>
-          <textarea
-            className="notes-textarea"
-            placeholder="Digite notas sobre a empresa, tomador de decisão, histórico de contato ou proposta enviada..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            onBlur={handleNotesBlur}
-          />
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-            As notas são salvas automaticamente no armazenamento local.
-          </span>
+          {/* Hours */}
+          {hours.length > 0 && (
+            <div className="detail-section">
+              <label className="detail-section-title">Horário de Funcionamento</label>
+              <div className="detail-card-box" style={{ gap: '4px' }}>
+                {hours.map((line, idx) => (
+                  <div key={idx} style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

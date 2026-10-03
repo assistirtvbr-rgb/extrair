@@ -1,20 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { 
-  Maximize2, 
-  Layers, 
   Crosshair, 
   Flame, 
-  Radar as RadarIcon,
-  Navigation
+  Navigation,
+  Layers
 } from 'lucide-react';
 import { formatPhone, getCategoryLabel } from '../utils/formatter';
 import { formatDistance } from '../utils/distance';
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export default function MapView({
   places = [],
-  centerLat = -22.9248,
-  centerLng = -43.2326,
+  centerLat = -22.7639,
+  centerLng = -43.3994,
   radiusKm = 5,
   activePlace,
   hoveredPlaceId,
@@ -28,11 +36,11 @@ export default function MapView({
   const markersLayerRef = useRef(null);
   const radiusCircleRef = useRef(null);
   const radarCircleRef = useRef(null);
-  const heatLayerRef = useRef(null);
+  const densityLayerRef = useRef(null);
   const markersMapRef = useRef(new Map());
 
   const [isExploreMode, setIsExploreMode] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showDensity, setShowDensity] = useState(false);
 
   // Initialize map once
   useEffect(() => {
@@ -40,27 +48,24 @@ export default function MapView({
 
     const map = L.map(mapContainerRef.current, {
       center: [centerLat, centerLng],
-      zoom: 14,
+      zoom: 13,
       zoomControl: false,
       attributionControl: false
     });
 
-    // 100% Free OpenStreetMap Standard Tiles (No API key needed, no watermarks)
+    // 100% Free OpenStreetMap Standard Tiles (No watermarks, no API key needed)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Zoom control on top-left
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // Create layer groups
     markersLayerRef.current = L.layerGroup().addTo(map);
-    heatLayerRef.current = L.layerGroup().addTo(map);
+    densityLayerRef.current = L.layerGroup().addTo(map);
 
     mapInstanceRef.current = map;
 
-    // Map click handler for "Explorar Área" mode
     map.on('click', (e) => {
       if (isExploreMode && onMapClickExplore) {
         onMapClickExplore(e.latlng.lat, e.latlng.lng);
@@ -74,14 +79,13 @@ export default function MapView({
     };
   }, []);
 
-  // Update map center & radius circle when search coordinates change
+  // Update center & radius circle
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     map.setView([centerLat, centerLng], map.getZoom(), { animate: true });
 
-    // Draw / update search radius circle
     if (radiusCircleRef.current) {
       map.removeLayer(radiusCircleRef.current);
     }
@@ -89,102 +93,100 @@ export default function MapView({
     const radiusMeters = radiusKm * 1000;
     radiusCircleRef.current = L.circle([centerLat, centerLng], {
       radius: radiusMeters,
-      color: '#183D32',
+      color: '#173F35',
       weight: 1.8,
       dashArray: '4, 4',
-      fillColor: '#2D6A57',
-      fillOpacity: 0.08
+      fillColor: '#173F35',
+      fillOpacity: 0.07
     }).addTo(map);
 
   }, [centerLat, centerLng, radiusKm]);
 
-  // Update markers on place list change
+  // Update markers
   useEffect(() => {
     const map = mapInstanceRef.current;
     const markersLayer = markersLayerRef.current;
-    const heatLayer = heatLayerRef.current;
-    if (!map || !markersLayer || !heatLayer) return;
+    const densityLayer = densityLayerRef.current;
+    if (!map || !markersLayer || !densityLayer) return;
 
     markersLayer.clearLayers();
-    heatLayer.clearLayers();
+    densityLayer.clearLayers();
     markersMapRef.current.clear();
 
-    // If density/heatmap is enabled, draw density discs
-    if (showHeatmap && places.length > 0) {
+    // Density concentration layer
+    if (showDensity && places.length > 0) {
       places.forEach(p => {
         const lat = p.location?.latitude || p.lat;
         const lng = p.location?.longitude || p.lng;
         if (lat && lng) {
           L.circle([lat, lng], {
-            radius: 350,
+            radius: 400,
             color: 'transparent',
-            fillColor: '#D46B45',
-            fillOpacity: 0.15
-          }).addTo(heatLayer);
+            fillColor: '#C85A32',
+            fillOpacity: 0.16
+          }).addTo(densityLayer);
         }
       });
     }
 
-    // Add markers for places
+    // Add discreet custom markers with XSS-safe escaping
     places.forEach((place, index) => {
       const lat = place.location?.latitude || place.lat;
       const lng = place.location?.longitude || place.lng;
       if (!lat || !lng) return;
 
       const placeId = place.id || place.place_id;
-      const name = place.displayName?.text || place.name || 'Empresa';
-      const category = place.primaryTypeDisplayName?.text || place.primaryType || place.category || 'Estabelecimento';
+      const safeName = escapeHtml(place.displayName?.text || place.name || 'Empresa');
+      const safeCategory = escapeHtml(getCategoryLabel(place.primaryTypeDisplayName?.text || place.primaryType || place.category));
+      const safePhone = place.nationalPhoneNumber ? escapeHtml(formatPhone(place.nationalPhoneNumber)) : null;
       const rating = place.rating;
       const reviews = place.userRatingCount || 0;
-      const phone = place.nationalPhoneNumber || place.phone;
-      const distance = place.distanceKm;
+      const dist = place.distanceKm;
 
-      // Custom discreet HTML Pin
       const markerHtml = `
-        <div class="custom-map-marker" id="marker-${placeId}" title="${name}">
-          <span style="font-size: 11px; font-weight: 700;">${index + 1}</span>
+        <div class="custom-map-marker" id="marker-${escapeHtml(placeId)}" title="${safeName}">
+          <span>${index + 1}</span>
         </div>
       `;
 
       const customIcon = L.divIcon({
         className: 'custom-leaflet-icon-wrapper',
         html: markerHtml,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -18]
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -16]
       });
 
       const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markersLayer);
 
-      // Popup Content
       const popupHtml = `
-        <div style="min-width: 200px; padding: 4px; font-family: Inter, sans-serif;">
-          <div style="font-size: 13px; font-weight: 700; color: #171816; margin-bottom: 2px;">
-            ${name}
+        <div style="min-width: 190px; padding: 2px; font-family: 'IBM Plex Sans', sans-serif;">
+          <div style="font-size: 13px; font-weight: 700; color: #202622; margin-bottom: 2px;">
+            ${safeName}
           </div>
-          <div style="font-size: 11px; color: #6E716B; margin-bottom: 6px;">
-            ${getCategoryLabel(category)} • ${formatDistance(distance)}
+          <div style="font-size: 11px; color: #616963; margin-bottom: 5px;">
+            ${safeCategory} • ${formatDistance(dist)}
           </div>
           ${rating ? `
-            <div style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; margin-bottom: 6px;">
-              <span style="color: #f59e0b;">★</span> ${rating} <span style="font-weight: normal; color: #6E716B; font-size: 11px;">(${reviews} reviews)</span>
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; margin-bottom: 6px;">
+              <span style="color: #EAB308;">★</span> ${rating} <span style="font-weight: normal; color: #8D9690;">(${reviews})</span>
             </div>
           ` : ''}
-          ${phone ? `
-            <div style="font-size: 11px; color: #171816; margin-bottom: 8px;">
-              📞 ${formatPhone(phone)}
+          ${safePhone ? `
+            <div style="font-size: 11px; color: #202622; margin-bottom: 8px;">
+              📞 ${safePhone}
             </div>
           ` : ''}
           <button 
-            id="popup-btn-${placeId}" 
-            style="width: 100%; padding: 5px 8px; background: #2D6A57; color: #fff; font-size: 12px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer;"
+            id="popup-btn-${escapeHtml(placeId)}" 
+            style="width: 100%; padding: 5px 8px; background: #173F35; color: #fff; font-size: 11.5px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer;"
           >
-            Ver detalhes
+            Ver Ficha Comercial
           </button>
         </div>
       `;
 
-      marker.bindPopup(popupHtml, { closeButton: false, offset: [0, -10] });
+      marker.bindPopup(popupHtml, { closeButton: false, offset: [0, -8] });
 
       marker.on('popupopen', () => {
         const btn = document.getElementById(`popup-btn-${placeId}`);
@@ -193,29 +195,21 @@ export default function MapView({
         }
       });
 
-      marker.on('mouseover', () => {
-        onHoverPlace(placeId);
-      });
-
-      marker.on('mouseout', () => {
-        onHoverPlace(null);
-      });
-
-      marker.on('click', () => {
-        onSelectPlace(place);
-      });
+      marker.on('mouseover', () => onHoverPlace(placeId));
+      marker.on('mouseout', () => onHoverPlace(null));
+      marker.on('click', () => onSelectPlace(place));
 
       markersMapRef.current.set(placeId, marker);
     });
 
-    // Fit map bounds smoothly if places exist
+    // Fit map bounds smoothly
     if (places.length > 0) {
       const group = L.featureGroup(Array.from(markersMapRef.current.values()));
-      map.fitBounds(group.getBounds().pad(0.2), { maxZoom: 15, animate: true });
+      map.fitBounds(group.getBounds().pad(0.18), { maxZoom: 15, animate: true });
     }
-  }, [places, showHeatmap]);
+  }, [places, showDensity]);
 
-  // Highlight marker when active or hovered
+  // Synchronize active and hovered markers
   useEffect(() => {
     const activeId = (activePlace && (activePlace.id || activePlace.place_id)) || hoveredPlaceId;
     
@@ -238,7 +232,7 @@ export default function MapView({
     }
   }, [activePlace, hoveredPlaceId]);
 
-  // Radar circle overlay
+  // Radar circle
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -254,9 +248,9 @@ export default function MapView({
       if (lat && lng) {
         radarCircleRef.current = L.circle([lat, lng], {
           radius: 2000,
-          color: '#D46B45',
+          color: '#C85A32',
           weight: 2,
-          fillColor: '#D46B45',
+          fillColor: '#C85A32',
           fillOpacity: 0.12
         }).addTo(map);
 
@@ -281,20 +275,20 @@ export default function MapView({
           type="button"
           className={`map-control-btn ${isExploreMode ? 'active' : ''}`}
           onClick={() => setIsExploreMode(!isExploreMode)}
-          title="Clique em qualquer ponto do mapa para pesquisar estabelecimentos naquela região"
+          title="Clique em qualquer lugar no mapa para redefinir a busca naquela região"
         >
-          <Crosshair size={14} />
+          <Crosshair size={13} />
           {isExploreMode ? 'Clique no mapa...' : 'Explorar área'}
         </button>
 
         <button
           type="button"
-          className={`map-control-btn ${showHeatmap ? 'active' : ''}`}
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          title="Exibir mapa de calor / densidade de concorrência"
+          className={`map-control-btn ${showDensity ? 'active' : ''}`}
+          onClick={() => setShowDensity(!showDensity)}
+          title="Exibir mapa de densidade de amostra local"
         >
-          <Flame size={14} />
-          Cobertura
+          <Flame size={13} />
+          Densidade
         </button>
 
         <button
@@ -303,7 +297,7 @@ export default function MapView({
           onClick={handleRecenter}
           title="Recentralizar no ponto de busca"
         >
-          <Navigation size={14} />
+          <Navigation size={13} />
           Centro
         </button>
       </div>
@@ -324,7 +318,7 @@ export default function MapView({
           zIndex: 400,
           pointerEvents: 'none'
         }}>
-          🎯 Clique em qualquer lugar no mapa para redefinir o centro da busca
+          🎯 Clique em qualquer ponto do mapa para reposicionar o centro da busca
         </div>
       )}
     </div>

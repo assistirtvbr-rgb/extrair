@@ -1,5 +1,19 @@
 /**
- * Export selected items to CSV format and trigger browser download
+ * Sanitize text to prevent CSV/Excel Formula Injection (CWE-1236)
+ * Prepend single quote if value starts with dangerous characters: =, +, -, @, \t, \r
+ */
+export function sanitizeCSVValue(val) {
+  if (val === null || val === undefined) return '';
+  const str = String(val).trim();
+  
+  if (/^[=+\-@\t\r]/.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+}
+
+/**
+ * Export selected items to CSV format with formula sanitization and safe download
  */
 export function exportToCSV(items, selectedFields = {}, filename = 'leadmap-export.csv') {
   if (!items || items.length === 0) return;
@@ -8,25 +22,30 @@ export function exportToCSV(items, selectedFields = {}, filename = 'leadmap-expo
     { key: 'name', label: 'Empresa', getter: (i) => i.displayName?.text || i.name || '' },
     { key: 'primaryType', label: 'Categoria', getter: (i) => i.primaryTypeDisplayName?.text || i.primaryType || i.category || '' },
     { key: 'phone', label: 'Telefone', getter: (i) => i.nationalPhoneNumber || i.internationalPhoneNumber || i.phone || '' },
+    { key: 'whatsapp', label: 'WhatsApp', getter: (i) => i.digitalPresence?.whatsapp?.url || i.digitalPresence?.whatsapp?.handle || '' },
     { key: 'website', label: 'Website', getter: (i) => i.websiteUri || i.website || '' },
+    { key: 'instagram', label: 'Instagram', getter: (i) => i.digitalPresence?.instagram?.url || i.digitalPresence?.instagram?.handle || '' },
+    { key: 'email', label: 'E-mail Comercial', getter: (i) => i.digitalPresence?.email?.address || '' },
     { key: 'address', label: 'Endereço', getter: (i) => i.formattedAddress || i.address || '' },
-    { key: 'rating', label: 'Avaliação', getter: (i) => i.rating || '' },
-    { key: 'userRatingCount', label: 'Reviews', getter: (i) => i.userRatingCount || 0 },
+    { key: 'rating', label: 'Avaliação (Google)', getter: (i) => i.rating || '' },
+    { key: 'userRatingCount', label: 'Total Reviews', getter: (i) => i.userRatingCount || 0 },
     { key: 'distance', label: 'Distância (km)', getter: (i) => i.distanceKm ? i.distanceKm.toFixed(2) : '' },
-    { key: 'latitude', label: 'Latitude', getter: (i) => i.location?.latitude || i.lat || '' },
-    { key: 'longitude', label: 'Longitude', getter: (i) => i.location?.longitude || i.lng || '' },
+    { key: 'leadScore', label: 'Score LeadMap (0-100)', getter: (i) => i.scoreData?.totalScore || '' },
+    { key: 'crmStatus', label: 'Status Pipeline', getter: (i) => i.crmData?.status || 'Novo' },
+    { key: 'nextAction', label: 'Próxima Ação', getter: (i) => i.crmData?.nextAction || '' },
+    { key: 'returnDate', label: 'Data de Retorno', getter: (i) => i.crmData?.returnDate || '' },
     { key: 'place_id', label: 'Place ID', getter: (i) => i.id || i.place_id || '' }
   ];
 
-  // Filter fields based on selected checkboxes or default all
   const activeFields = fieldDefs.filter(f => selectedFields[f.key] !== false);
 
   const headerRow = activeFields.map(f => `"${f.label.replace(/"/g, '""')}"`).join(',');
   
   const dataRows = items.map(item => {
     return activeFields.map(f => {
-      const val = String(f.getter(item) ?? '');
-      return `"${val.replace(/"/g, '""')}"`;
+      const rawVal = f.getter(item);
+      const safeVal = sanitizeCSVValue(rawVal);
+      return `"${safeVal.replace(/"/g, '""')}"`;
     }).join(',');
   });
 
@@ -61,7 +80,10 @@ export function exportToJSON(items, filename = 'leadmap-export.json') {
     distanceKm: i.distanceKm,
     latitude: i.location?.latitude || i.lat,
     longitude: i.location?.longitude || i.lng,
-    googleMapsUri: i.googleMapsUri
+    googleMapsUri: i.googleMapsUri,
+    digitalPresence: i.digitalPresence || null,
+    crm: i.crmData || null,
+    score: i.scoreData || null
   }));
 
   const jsonString = JSON.stringify(formatted, null, 2);
@@ -87,9 +109,22 @@ export async function copyToClipboard(items) {
     const name = i.displayName?.text || i.name;
     const phone = i.nationalPhoneNumber || i.phone || 'Sem telefone';
     const site = i.websiteUri || i.website || 'Sem site';
+    const insta = i.digitalPresence?.instagram?.handle ? `Instagram: ${i.digitalPresence.instagram.handle}` : null;
+    const zap = i.digitalPresence?.whatsapp?.url ? `WhatsApp: ${i.digitalPresence.whatsapp.url}` : null;
     const address = i.formattedAddress || i.address || '';
-    const rating = i.rating ? `★ ${i.rating} (${i.userRatingCount || 0})` : 'Sem avaliações';
-    return `${idx + 1}. ${name}\n   Telefone: ${phone}\n   Website: ${site}\n   Endereço: ${address}\n   Avaliação: ${rating}`;
+    const rating = i.rating ? `★ ${i.rating} (${i.userRatingCount || 0} avaliações)` : 'Sem avaliações';
+    const nextAct = i.crmData?.nextAction ? `Próxima ação: ${i.crmData.nextAction}` : null;
+
+    return [
+      `${idx + 1}. ${name}`,
+      `   Telefone: ${phone}`,
+      `   Website: ${site}`,
+      insta ? `   ${insta}` : null,
+      zap ? `   ${zap}` : null,
+      `   Endereço: ${address}`,
+      `   Avaliação: ${rating}`,
+      nextAct ? `   ${nextAct}` : null
+    ].filter(Boolean).join('\n');
   }).join('\n\n');
 
   try {

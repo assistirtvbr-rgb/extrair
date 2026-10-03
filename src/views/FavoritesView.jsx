@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Bookmark, Search, Download, Trash2, Globe, Phone, Star, MapPin } from 'lucide-react';
-import { extractCleanDomain } from '../utils/domain';
+import DigitalPresenceBadge from '../components/DigitalPresenceBadge';
+import LeadScoreBadge from '../components/LeadScoreBadge';
 import { formatPhone, getCategoryLabel, formatDate } from '../utils/formatter';
-import { formatDistance } from '../utils/distance';
 import { exportToCSV, exportToJSON } from '../utils/csv';
 
 export default function FavoritesView({
   favorites = [],
+  leadStore = {},
   onToggleFavorite,
   onOpenDetails,
   onAddToList
@@ -30,9 +31,9 @@ export default function FavoritesView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: 'var(--bg-main)' }}>
       {/* Top Toolbar */}
-      <div style={{ padding: '16px 24px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="results-filter-inline" style={{ width: '260px' }}>
+      <div style={{ padding: '12px 20px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="results-filter-inline" style={{ width: '240px' }}>
             <Search size={13} className="search-icon" />
             <input
               type="text"
@@ -41,29 +42,29 @@ export default function FavoritesView({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }} className="tnum">
             {filtered.length} {filtered.length === 1 ? 'empresa favoritada' : 'empresas favoritadas'}
           </span>
         </div>
 
         {favorites.length > 0 && (
           <button className="btn btn-secondary btn-sm" onClick={handleExport}>
-            <Download size={14} />
+            <Download size={13} />
             Exportar Favoritos (CSV)
           </button>
         )}
       </div>
 
-      {/* Content */}
+      {/* Content Table */}
       <div className="table-container">
         {filtered.length === 0 ? (
           <div className="empty-state-container">
             <div className="empty-state-icon">
-              <Bookmark size={26} />
+              <Bookmark size={24} />
             </div>
-            <h3 className="empty-state-title">Nenhum favorito encontrado</h3>
+            <h3 className="empty-state-title">Nenhum lead favorito</h3>
             <p className="empty-state-desc">
-              Você pode marcar qualquer estabelecimento com estrela durante as pesquisas para salvar como favorito.
+              Clique no ícone de estrela durante as pesquisas para marcar empresas como favoritas.
             </p>
           </div>
         ) : (
@@ -71,12 +72,13 @@ export default function FavoritesView({
             <thead>
               <tr>
                 <th>Empresa</th>
+                <th>Score</th>
                 <th>Categoria</th>
+                <th>Presença Digital</th>
                 <th>Telefone</th>
-                <th>Website</th>
                 <th>Avaliação</th>
                 <th>Endereço</th>
-                <th>Data Salva</th>
+                <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -87,36 +89,36 @@ export default function FavoritesView({
                 const category = place.primaryTypeDisplayName?.text || place.category;
                 const phone = place.nationalPhoneNumber || place.phone;
                 const rawWeb = place.websiteUri || place.website;
-                const cleanDomain = extractCleanDomain(rawWeb);
                 const address = place.formattedAddress || place.address;
+                const leadData = leadStore[placeId] || {};
+                const dp = place.digitalPresence || leadData.digitalPresence || {};
 
                 return (
                   <tr key={placeId} onClick={() => onOpenDetails(place)} style={{ cursor: 'pointer' }}>
                     <td style={{ fontWeight: '600' }}>{name}</td>
                     <td>
+                      <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={leadData} />
+                    </td>
+                    <td>
                       <span className="badge badge-neutral">{getCategoryLabel(category)}</span>
                     </td>
-                    <td>{phone ? formatPhone(phone) : '—'}</td>
                     <td onClick={(e) => e.stopPropagation()}>
-                      {cleanDomain ? (
-                        <a href={rawWeb} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Globe size={12} /> {cleanDomain}
-                        </a>
-                      ) : '—'}
+                      <DigitalPresenceBadge digitalPresence={dp} websiteUrl={rawWeb} onOpenDetails={() => onOpenDetails(place)} />
                     </td>
+                    <td>{phone ? formatPhone(phone) : '—'}</td>
                     <td>
                       {place.rating ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
-                          <Star size={12} className="result-rating-star" />
-                          {place.rating} ({place.userRatingCount || 0})
+                          <Star size={11} style={{ color: '#EAB308', fill: '#EAB308' }} />
+                          <span className="tnum">{place.rating}</span> ({place.userRatingCount || 0})
                         </span>
                       ) : '—'}
                     </td>
-                    <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={address}>
+                    <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={address}>
                       {address}
                     </td>
-                    <td style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      {formatDate(place.savedAt)}
+                    <td>
+                      <span className="badge badge-green">{leadData.status || 'Novo'}</span>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <button
@@ -124,7 +126,7 @@ export default function FavoritesView({
                         onClick={() => onToggleFavorite(place)}
                         title="Remover dos favoritos"
                       >
-                        <Trash2 size={13} color="var(--alert-color)" />
+                        <Trash2 size={13} color="var(--terracotta)" />
                       </button>
                     </td>
                   </tr>

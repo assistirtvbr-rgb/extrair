@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, RotateCcw, Check } from 'lucide-react';
+import { X, RotateCcw, Check, Sparkles } from 'lucide-react';
 
 export default function FiltersPanel({ 
   isOpen, 
@@ -29,6 +29,7 @@ export default function FiltersPanel({
 
   const sortOptions = [
     { value: 'distance', label: 'Mais próximos' },
+    { value: 'score', label: 'Maior Score LeadMap' },
     { value: 'rating', label: 'Melhor avaliados' },
     { value: 'reviews', label: 'Mais avaliações' },
     { value: 'name', label: 'Nome A-Z' }
@@ -38,16 +39,16 @@ export default function FiltersPanel({
     <div className="filters-panel-overlay" onClick={onClose}>
       <div className="filters-panel" onClick={(e) => e.stopPropagation()}>
         <div className="filters-panel-header">
-          <h3 style={{ fontSize: '15px', fontWeight: '700' }}>Filtros & Ordenação</h3>
+          <h3 style={{ fontSize: '15px', fontWeight: '700' }}>Filtros de Prospecção & Ordenação</h3>
           <button className="btn-icon" onClick={onClose} aria-label="Fechar filtros">
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="filters-panel-body">
           {/* Ordenação */}
           <div className="filter-group">
-            <label className="filter-label">Ordenar resultados por</label>
+            <label className="filter-label">Ordenar Resultados</label>
             <div className="filter-options-pills">
               {sortOptions.map((opt) => (
                 <button
@@ -62,9 +63,60 @@ export default function FiltersPanel({
             </div>
           </div>
 
+          {/* Presença Digital & Canais */}
+          <div className="filter-group">
+            <label className="filter-label">Canais Digitais & Contato</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '2px' }}>
+              <label className="filter-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyWithPhone}
+                  onChange={(e) => setFilters(prev => ({ ...prev, onlyWithPhone: e.target.checked }))}
+                />
+                <span>Com <strong>telefone</strong> disponível</span>
+              </label>
+
+              <label className="filter-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyWithWhatsApp}
+                  onChange={(e) => setFilters(prev => ({ ...prev, onlyWithWhatsApp: e.target.checked }))}
+                />
+                <span>Com <strong>WhatsApp</strong> comercial identificado</span>
+              </label>
+
+              <label className="filter-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyWithWebsite}
+                  onChange={(e) => setFilters(prev => ({ ...prev, onlyWithWebsite: e.target.checked }))}
+                />
+                <span>Com <strong>website</strong> institucional</span>
+              </label>
+
+              <label className="filter-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyWithInstagram}
+                  onChange={(e) => setFilters(prev => ({ ...prev, onlyWithInstagram: e.target.checked }))}
+                />
+                <span>Com perfil do <strong>Instagram</strong></span>
+              </label>
+
+              <label className="filter-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={filters.onlyOpenNow}
+                  onChange={(e) => setFilters(prev => ({ ...prev, onlyOpenNow: e.target.checked }))}
+                />
+                <span>Aberto agora no momento da busca</span>
+              </label>
+            </div>
+          </div>
+
           {/* Avaliação Mínima */}
           <div className="filter-group">
-            <label className="filter-label">Avaliação Mínima (Google Maps)</label>
+            <label className="filter-label">Avaliação no Google Maps</label>
             <div className="filter-options-pills">
               {ratingOptions.map((opt) => (
                 <button
@@ -79,9 +131,9 @@ export default function FiltersPanel({
             </div>
           </div>
 
-          {/* Quantidade Mínima de Reviews */}
+          {/* Quantidade de Reviews */}
           <div className="filter-group">
-            <label className="filter-label">Quantidade de Avaliações</label>
+            <label className="filter-label">Base Mínima de Avaliações</label>
             <div className="filter-options-pills">
               {reviewOptions.map((opt) => (
                 <button
@@ -95,47 +147,15 @@ export default function FiltersPanel({
               ))}
             </div>
           </div>
-
-          {/* Flags / Requisitos de Contato */}
-          <div className="filter-group" style={{ gap: '10px', paddingTop: '4px' }}>
-            <label className="filter-label">Critérios de Contato & Presença Digital</label>
-            
-            <label className="filter-checkbox-row">
-              <input
-                type="checkbox"
-                checked={filters.onlyWithPhone}
-                onChange={(e) => setFilters(prev => ({ ...prev, onlyWithPhone: e.target.checked }))}
-              />
-              <span>Somente estabelecimentos com <strong>telefone</strong></span>
-            </label>
-
-            <label className="filter-checkbox-row">
-              <input
-                type="checkbox"
-                checked={filters.onlyWithWebsite}
-                onChange={(e) => setFilters(prev => ({ ...prev, onlyWithWebsite: e.target.checked }))}
-              />
-              <span>Somente estabelecimentos com <strong>website</strong></span>
-            </label>
-
-            <label className="filter-checkbox-row">
-              <input
-                type="checkbox"
-                checked={filters.onlyOpenNow}
-                onChange={(e) => setFilters(prev => ({ ...prev, onlyOpenNow: e.target.checked }))}
-              />
-              <span>Aberto agora no momento da busca</span>
-            </label>
-          </div>
         </div>
 
         <div className="modal-footer">
           <button className="btn btn-ghost btn-sm" onClick={onReset}>
-            <RotateCcw size={14} />
+            <RotateCcw size={13} />
             Limpar filtros
           </button>
           <button className="btn btn-primary btn-sm" onClick={onClose}>
-            <Check size={14} />
+            <Check size={13} />
             Aplicar filtros
           </button>
         </div>

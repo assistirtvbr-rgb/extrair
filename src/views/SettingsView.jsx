@@ -1,10 +1,24 @@
 import React, { useState } from 'react';
-import { Settings, ShieldCheck, Database, Save, RotateCcw, Check, Key, Server, Cpu } from 'lucide-react';
+import { 
+  Settings, 
+  ShieldCheck, 
+  Database, 
+  Save, 
+  RotateCcw, 
+  Check, 
+  Download, 
+  Upload, 
+  Server, 
+  Sparkles,
+  AlertTriangle
+} from 'lucide-react';
 import { storageService } from '../services/storageService';
 
-export default function SettingsView({ onDataReset }) {
+export default function SettingsView({ onDataReset, isDemoMode, onToggleDemoMode }) {
   const [settings, setSettings] = useState(storageService.getSettings());
   const [saved, setSaved] = useState(false);
+  const [backupJson, setBackupJson] = useState('');
+  const [importStatus, setImportStatus] = useState(null);
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -13,156 +27,175 @@ export default function SettingsView({ onDataReset }) {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleDownloadBackup = () => {
+    const jsonStr = storageService.exportBackupJSON();
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leadmap-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = () => {
+    if (!backupJson.trim()) return;
+    try {
+      storageService.importBackupJSON(backupJson.trim());
+      setImportStatus({ success: true, message: 'Backup restaurado com sucesso!' });
+      if (onDataReset) onDataReset();
+      setBackupJson('');
+    } catch (err) {
+      setImportStatus({ success: false, message: `Erro ao importar: ${err.message}` });
+    }
+  };
+
   const handleClearHistory = () => {
-    if (window.confirm('Limpar todo o histórico de pesquisas?')) {
+    if (window.confirm('Deseja limpar todo o histórico de buscas?')) {
       storageService.clearHistory();
       if (onDataReset) onDataReset();
-      alert('Histórico limpo com sucesso!');
     }
   };
 
-  const handleClearFavorites = () => {
-    if (window.confirm('Remover todas as empresas dos favoritos?')) {
-      localStorage.removeItem('leadmap_favorites');
-      if (onDataReset) onDataReset();
-      alert('Favoritos removidos com sucesso!');
-    }
-  };
-
-  const handleClearLists = () => {
-    if (window.confirm('Excluir todas as listas salvas? Esta ação não pode ser desfeita.')) {
-      localStorage.removeItem('leadmap_lists');
-      if (onDataReset) onDataReset();
-      alert('Listas excluídas com sucesso!');
-    }
-  };
-
-  const handleResetAll = () => {
-    if (window.confirm('ATENÇÃO: Deseja restaurar a aplicação para o estado de fábrica? Todos os dados locais serão apagados.')) {
+  const handleClearAll = () => {
+    if (window.confirm('ATENÇÃO: Deseja apagar todos os dados locais (listas, pipeline, notas e favoritos)?')) {
       storageService.clearAllData();
       if (onDataReset) onDataReset();
-      alert('Aplicação restaurada com sucesso!');
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '24px' }}>
-      <div style={{ maxWidth: '780px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--bg-main)', padding: '20px' }}>
+      <div style={{ maxWidth: '760px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
         
-        {/* Backend & Security Card */}
+        {/* Mode Selector Card */}
         <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
           <div className="filters-panel-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Server size={18} color="var(--green-accent)" />
-              <h2 style={{ fontSize: '15px', fontWeight: '700' }}>Configuração do Cloudflare Worker & API</h2>
+              <Sparkles size={16} color="var(--green-dark)" />
+              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Modo de Operação</h2>
             </div>
-            <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ShieldCheck size={12} /> API Key Protegida
+            <span className={`badge ${isDemoMode ? 'badge-lime' : 'badge-green'}`}>
+              {isDemoMode ? 'Modo Demonstração' : 'Google Places Live'}
             </span>
           </div>
 
-          <form onSubmit={handleSave} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Alterne entre o <strong>Modo Demonstração</strong> (dados brasileiros de alta fidelidade sem gastar cota) e o <strong>Modo Live Google Places</strong> (requisições reais ao Cloudflare Worker).
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button
+                type="button"
+                className={`btn ${isDemoMode ? 'btn-lime' : 'btn-secondary'} btn-sm`}
+                onClick={() => onToggleDemoMode(true)}
+              >
+                Ativar Modo Demonstração (Grátis / Offline)
+              </button>
+              <button
+                type="button"
+                className={`btn ${!isDemoMode ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                onClick={() => onToggleDemoMode(false)}
+              >
+                Ativar Modo Google Places (Live Worker)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Backend & Cloudflare Worker Endpoint Card */}
+        <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
+          <div className="filters-panel-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Server size={16} color="var(--green-dark)" />
+              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Endpoint Cloudflare Worker</h2>
+            </div>
+            <span className="badge badge-green" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ShieldCheck size={12} /> Proxy Seguro
+            </span>
+          </div>
+
+          <form onSubmit={handleSave} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="filter-group">
-              <label className="filter-label">URL do Endpoint Cloudflare Worker (Proxy)</label>
+              <label className="filter-label">URL do Endpoint de Busca</label>
               <input
-                type="url"
+                type="text"
                 value={settings.workerApiUrl}
                 onChange={(e) => setSettings({ ...settings, workerApiUrl: e.target.value })}
-                placeholder="http://localhost:8787/api/search ou https://worker.seudominio.workers.dev/api/search"
-                style={{ padding: '9px 12px' }}
+                placeholder="/api/search ou https://extrair.rogerin.workers.dev/api/search"
+                style={{ padding: '8px 10px' }}
                 required
               />
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Todas as chamadas para a Google Places API (New) são roteadas por este worker seguro sem expor a chave no cliente.
+              <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                Todas as chamadas à Google Places API passam pelo Worker para não expor a chave de API no navegador.
               </span>
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Raio Padrão Inicial de Pesquisa</label>
-              <select
-                value={settings.defaultRadiusKm}
-                onChange={(e) => setSettings({ ...settings, defaultRadiusKm: parseFloat(e.target.value) })}
-                style={{ padding: '8px 12px' }}
-              >
-                <option value={1}>1 km (Ultra local / a pé)</option>
-                <option value={3}>3 km (Bairro e adjacências)</option>
-                <option value={5}>5 km (Raio comercial padrão)</option>
-                <option value={10}>10 km (Região metropolitana)</option>
-                <option value={25}>25 km (Cidade inteira)</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
               <button type="submit" className="btn btn-primary btn-sm">
-                {saved ? <Check size={14} /> : <Save size={14} />}
+                {saved ? <Check size={13} /> : <Save size={13} />}
                 {saved ? 'Configurações Salvas!' : 'Salvar Parâmetros'}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Local Storage & Data Management */}
+        {/* Backup & Restore JSON Card */}
         <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
           <div className="filters-panel-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database size={18} color="var(--green-accent)" />
-              <h2 style={{ fontSize: '15px', fontWeight: '700' }}>Armazenamento Local & Privacidade</h2>
+              <Database size={16} color="var(--green-dark)" />
+              <h2 style={{ fontSize: '14.5px', fontWeight: '700' }}>Backup & Restauração Completa de Dados</h2>
             </div>
           </div>
 
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Seus dados de prospecção, listas salvas, tags de leads e notas são armazenados de forma privada no armazenamento do seu próprio navegador (LocalStorage).
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+              Exporte seus leads, pipeline, notas, tags e listas em um arquivo JSON seguro ou cole o conteúdo de um backup anterior para restaurar.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '6px' }}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearHistory}>
-                Limpar Histórico de Buscas
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownloadBackup}>
+                <Download size={13} />
+                Baixar Arquivo de Backup (.json)
               </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearFavorites}>
-                Limpar Favoritos
-              </button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleClearLists}>
-                Excluir Todas as Listas
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-secondary btn-sm" 
-                onClick={handleResetAll}
-                style={{ color: 'var(--alert-color)', borderColor: '#FCA5A5' }}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+              <label className="filter-label">Restaurar de arquivo JSON</label>
+              <textarea
+                value={backupJson}
+                onChange={(e) => setBackupJson(e.target.value)}
+                placeholder="Cole o código JSON do backup aqui para restaurar..."
+                style={{ minHeight: '70px', padding: '6px 8px', fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}
+              />
+
+              {importStatus && (
+                <div style={{ fontSize: '12px', color: importStatus.success ? 'var(--green-dark)' : 'var(--terracotta)', fontWeight: '600' }}>
+                  {importStatus.message}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleImportBackup}
+                disabled={!backupJson.trim()}
+                style={{ width: 'fit-content' }}
               >
-                Resetar Toda a Aplicação
+                <Upload size={13} />
+                Restaurar Backup
               </button>
             </div>
-          </div>
-        </div>
 
-        {/* Keyboard shortcuts */}
-        <div className="filters-panel" style={{ width: '100%', borderRadius: 'var(--radius-md)' }}>
-          <div className="filters-panel-header">
-            <h2 style={{ fontSize: '15px', fontWeight: '700' }}>Atalhos de Teclado</h2>
-          </div>
-
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div className="detail-item-row">
-              <span className="detail-item-label">Focar campo de pesquisa:</span>
-              <kbd style={{ background: 'var(--bg-subtle)', padding: '3px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
-                Ctrl + K / ⌘ + K
-              </kbd>
-            </div>
-
-            <div className="detail-item-row">
-              <span className="detail-item-label">Fechar gaveta de detalhes ou filtros:</span>
-              <kbd style={{ background: 'var(--bg-subtle)', padding: '3px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
-                Esc
-              </kbd>
-            </div>
-
-            <div className="detail-item-row">
-              <span className="detail-item-label">Selecionar todos os estabelecimentos da página:</span>
-              <kbd style={{ background: 'var(--bg-subtle)', padding: '3px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '11px', fontWeight: '600' }}>
-                Ctrl + A / ⌘ + A
-              </kbd>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '10px', display: 'flex', gap: '8px' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearHistory} style={{ color: 'var(--text-secondary)' }}>
+                Limpar Histórico
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearAll} style={{ color: 'var(--terracotta)' }}>
+                Apagar Todos os Dados Locais
+              </button>
             </div>
           </div>
         </div>

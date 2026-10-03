@@ -5,8 +5,10 @@ import {
   Columns2, 
   List, 
   Map as MapIcon, 
-  SlidersHorizontal,
-  Command
+  Table as TableIcon,
+  Sparkles,
+  Command,
+  HelpCircle
 } from 'lucide-react';
 
 export default function Topbar({ 
@@ -16,22 +18,25 @@ export default function Topbar({
   totalResults = 0,
   onOpenExport,
   onOpenSaveList,
-  onOpenFilters
+  onOpenBatchEnrich,
+  onOpenCommandPalette
 }) {
   const getTitles = () => {
     switch (currentView) {
+      case 'pipeline':
+        return { title: 'Pipeline de Prospecção', subtitle: 'Acompanhamento de oportunidades, retornos e status comercial' };
       case 'lists':
-        return { title: 'Minhas Listas Comerciais', subtitle: 'Listas segmentadas e gerenciamento de leads' };
+        return { title: 'Minhas Listas Comerciais', subtitle: 'Segmentações de mercado e exportações salvas' };
       case 'favorites':
-        return { title: 'Empresas Favoritas', subtitle: 'Estabelecimentos marcados com estrela' };
+        return { title: 'Leads Favoritos', subtitle: 'Estabelecimentos marcados com estrela para abordagem' };
       case 'comparator':
-        return { title: 'Comparador de Mercado por Região', subtitle: 'Inteligência e densidade comercial comparada' };
+        return { title: 'Comparador de Regiões', subtitle: 'Amostra comparativa e densidade comercial por bairro ou cidade' };
       case 'history':
-        return { title: 'Histórico de Pesquisas', subtitle: 'Consultas recentes e reexecução rápida' };
+        return { title: 'Histórico de Consultas', subtitle: 'Consultas anteriores com reexecução em 1 clique' };
       case 'settings':
-        return { title: 'Configurações do LeadMap', subtitle: 'Parâmetros de API, mapa e armazenamento local' };
+        return { title: 'Configurações do LeadMap', subtitle: 'Credenciais da API, parâmetros de raio e backup local' };
       default:
-        return { title: 'Pesquisa de Empresas', subtitle: 'Mapeamento de estabelecimentos via Google Places API' };
+        return { title: 'Explorar Estabelecimentos', subtitle: 'Estação de trabalho de prospecção e inteligência local' };
     }
   };
 
@@ -44,8 +49,8 @@ export default function Topbar({
           <h1 className="topbar-title">
             {title}
             {currentView === 'search' && totalResults > 0 && (
-              <span className="badge badge-green">
-                {totalResults} {totalResults === 1 ? 'resultado' : 'resultados'}
+              <span className="badge badge-green tnum">
+                {totalResults} {totalResults === 1 ? 'carregado' : 'carregados'}
               </span>
             )}
           </h1>
@@ -57,47 +62,63 @@ export default function Topbar({
         {currentView === 'search' && (
           <>
             {/* View Layout Switcher */}
-            <div className="radius-selector" style={{ padding: '2px', marginRight: '6px' }}>
+            <div className="radius-selector" style={{ padding: '2px', marginRight: '4px' }}>
               <button
                 className={`radius-chip ${viewMode === 'split' ? 'active' : ''}`}
                 onClick={() => setViewMode('split')}
-                title="Dividir tela (Lista + Mapa)"
+                title="Dividir tela: Lista + Mapa"
               >
-                <Columns2 size={15} />
+                <Columns2 size={14} />
               </button>
               <button
                 className={`radius-chip ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
-                title="Somente Lista"
+                title="Visualização somente Lista"
               >
-                <List size={15} />
+                <List size={14} />
               </button>
               <button
                 className={`radius-chip ${viewMode === 'map' ? 'active' : ''}`}
                 onClick={() => setViewMode('map')}
-                title="Somente Mapa"
+                title="Visualização somente Mapa"
               >
-                <MapIcon size={15} />
+                <MapIcon size={14} />
+              </button>
+              <button
+                className={`radius-chip ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Visualização em Tabela Avançada"
+              >
+                <TableIcon size={14} />
               </button>
             </div>
 
             {totalResults > 0 && (
               <>
                 <button
+                  className="btn btn-lime btn-sm"
+                  onClick={onOpenBatchEnrich}
+                  title="Enriquecer redes sociais e WhatsApp dos leads visíveis"
+                >
+                  <Sparkles size={13} />
+                  Enriquecer
+                </button>
+
+                <button
                   className="btn btn-secondary btn-sm"
                   onClick={onOpenSaveList}
-                  title="Salvar resultados como uma nova lista de prospecção"
+                  title="Salvar resultados como nova lista"
                 >
-                  <BookmarkPlus size={14} />
+                  <BookmarkPlus size={13} />
                   Salvar lista
                 </button>
 
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={onOpenExport}
-                  title="Exportar dados (CSV, JSON ou Área de transferência)"
+                  title="Exportar para CSV ou JSON"
                 >
-                  <Download size={14} />
+                  <Download size={13} />
                   Exportar
                 </button>
               </>
@@ -105,9 +126,16 @@ export default function Topbar({
           </>
         )}
 
-        <div className="badge badge-neutral" style={{ gap: '4px', fontSize: '11px', cursor: 'default' }} title="Pressione Ctrl+K para buscar rapidamente">
-          <Command size={11} /> K
-        </div>
+        {/* Command Palette trigger */}
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={onOpenCommandPalette}
+          title="Abrir paleta de comandos (Ctrl + K / ⌘ + K)"
+          style={{ gap: '4px', fontSize: '11.5px', color: 'var(--text-secondary)' }}
+        >
+          <Command size={12} />
+          <span style={{ fontWeight: '600' }}>K</span>
+        </button>
       </div>
     </header>
   );

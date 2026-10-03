@@ -1,9 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import SearchBar from '../components/SearchBar';
 import SearchSummary from '../components/SearchSummary';
 import ResultsList from '../components/ResultsList';
 import MapView from '../components/MapView';
-import BusinessDetails from '../components/BusinessDetails';
 import SelectionBar from '../components/SelectionBar';
 import FiltersPanel from '../components/FiltersPanel';
 
@@ -17,6 +16,10 @@ export default function SearchView({
   onSearch,
   onGetCurrentLocation,
   isLoading,
+  isLoadingMore,
+  apiError,
+  hasNextPage,
+  onLoadMore,
   places,
   activePlace,
   setActivePlace,
@@ -29,14 +32,12 @@ export default function SearchView({
   onOpenRadar,
   onOpenExport,
   onOpenSaveList,
+  onOpenBatchEnrich,
   viewMode,
-  displayMode,
-  setDisplayMode,
   filters,
   setFilters,
   onResetFilters,
-  leadMetadata,
-  onUpdateLeadMeta,
+  leadStore,
   centerLat,
   centerLng,
   radarPlace,
@@ -44,18 +45,57 @@ export default function SearchView({
   setIsFiltersOpen,
   searchInputRef
 }) {
-  const activeFiltersCount = (
-    (filters.minRating > 0 ? 1 : 0) +
-    (filters.minReviews > 0 ? 1 : 0) +
-    (filters.onlyWithPhone ? 1 : 0) +
-    (filters.onlyWithWebsite ? 1 : 0) +
-    (filters.onlyOpenNow ? 1 : 0)
-  );
+  // Resizable split ratio (percentage for list panel)
+  const [splitPercent, setSplitPercent] = useState(() => {
+    try {
+      const saved = localStorage.getItem('leadmap_split_ratio');
+      return saved ? parseFloat(saved) : 42;
+    } catch {
+      return 42;
+    }
+  });
+
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDraggingRef.current) return;
+    const containerWidth = window.innerWidth;
+    const sidebarWidth = 64; // approximate
+    const availableWidth = containerWidth - sidebarWidth;
+    const clientX = e.clientX - sidebarWidth;
+    const newPercent = Math.min(Math.max((clientX / availableWidth) * 100, 25), 75);
+    setSplitPercent(newPercent);
+    localStorage.setItem('leadmap_split_ratio', newPercent.toFixed(1));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }, [handleMouseMove]);
+
+  const handleResizerKeyDown = (e) => {
+    if (e.key === 'ArrowLeft') {
+      setSplitPercent(prev => Math.max(prev - 5, 25));
+    } else if (e.key === 'ArrowRight') {
+      setSplitPercent(prev => Math.min(prev + 5, 75));
+    }
+  };
 
   return (
     <div className={`content-split view-mode-${viewMode}`}>
       {/* Left List Panel */}
-      <div className="split-list-panel">
+      <div 
+        className="split-list-panel" 
+        style={{ width: viewMode === 'split' ? `${splitPercent}%` : undefined }}
+      >
         <SearchBar
           query={query}
           setQuery={setQuery}
@@ -66,20 +106,25 @@ export default function SearchView({
           onSearch={onSearch}
           onGetCurrentLocation={onGetCurrentLocation}
           onOpenFilters={() => setIsFiltersOpen(true)}
-          activeFiltersCount={activeFiltersCount}
+          filters={filters}
+          setFilters={setFilters}
+          onResetFilters={onResetFilters}
           isLoading={isLoading}
           searchInputRef={searchInputRef}
         />
 
         <SearchSummary
           places={places}
-          displayMode={displayMode}
-          setDisplayMode={setDisplayMode}
+          leadStore={leadStore}
         />
 
         <ResultsList
           places={places}
           isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          apiError={apiError}
+          hasNextPage={hasNextPage}
+          onLoadMore={onLoadMore}
           selectedPlaces={selectedPlaces}
           setSelectedPlaces={setSelectedPlaces}
           activePlace={activePlace}
@@ -89,12 +134,25 @@ export default function SearchView({
           favorites={favorites}
           onToggleFavorite={onToggleFavorite}
           onOpenRadar={onOpenRadar}
-          displayMode={displayMode}
+          viewMode={viewMode}
           filters={filters}
-          leadMetadata={leadMetadata}
+          leadStore={leadStore}
           onOpenDetails={(place) => setActivePlace(place)}
         />
       </div>
+
+      {/* Resizable divider for split view */}
+      {viewMode === 'split' && (
+        <div
+          className="split-resizer"
+          onMouseDown={handleMouseDown}
+          onKeyDown={handleResizerKeyDown}
+          tabIndex={0}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Redimensionar painel de lista e mapa"
+        />
+      )}
 
       {/* Right Map Panel */}
       <div className="split-map-panel">
@@ -114,28 +172,13 @@ export default function SearchView({
         />
       </div>
 
-      {/* Slide Drawer for Selected Business */}
-      <BusinessDetails
-        isOpen={Boolean(activePlace)}
-        place={activePlace}
-        onClose={() => setActivePlace(null)}
-        isFavorite={Boolean(activePlace && favorites.some(f => (f.id || f.place_id) === (activePlace.id || activePlace.place_id)))}
-        onToggleFavorite={onToggleFavorite}
-        onAddToList={(p) => {
-          setSelectedPlaces([p]);
-          onOpenSaveList();
-        }}
-        onOpenRadar={onOpenRadar}
-        leadMeta={activePlace ? (leadMetadata[activePlace.id || activePlace.place_id] || {}) : {}}
-        onUpdateLeadMeta={onUpdateLeadMeta}
-      />
-
       {/* Floating Selection Bar */}
       <SelectionBar
         selectedCount={selectedPlaces.length}
         onClearSelection={() => setSelectedPlaces([])}
         onAddToList={onOpenSaveList}
         onExport={onOpenExport}
+        onBatchEnrich={onOpenBatchEnrich}
       />
 
       {/* Filters Modal / Popover */}

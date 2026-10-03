@@ -1,36 +1,52 @@
 :root {
-  /* Core Color Palette */
-  --bg-main: #F4F3EF;
+  /* Core Color Palette - Mineral, Graphite, Forest Green, Soft Lime & Terracotta */
+  --bg-main: #F3F2EE;
   --bg-panel: #FFFFFF;
-  --bg-subtle: #F8F8F6;
-  --bg-hover: #F0EFEA;
-  --bg-active: #E8EBE7;
+  --bg-subtle: #F7F7F4;
+  --bg-hover: #ECECE7;
+  --bg-active: #E3E4DC;
   
-  --text-primary: #171816;
-  --text-secondary: #6E716B;
-  --text-muted: #9BA098;
+  --text-primary: #202622;
+  --text-secondary: #616963;
+  --text-muted: #8D9690;
   --text-inverse: #FFFFFF;
   
-  --green-dark: #183D32;
-  --green-accent: #2D6A57;
-  --green-accent-hover: #235445;
-  --green-light: #DDEBE5;
-  --green-subtle: #EDF5F2;
+  /* Brand Green (Deep Forest) */
+  --green-dark: #173F35;
+  --green-dark-hover: #102B24;
+  --green-accent: #1F5447;
+  --green-subtle: #E8EFEA;
   
-  --border-color: #D9DBD5;
-  --border-subtle: #EBECE8;
-  --border-focus: #2D6A57;
+  /* Soft Lime (Selection, Highlights & Tiers) */
+  --lime-accent: #D6EC91;
+  --lime-hover: #C5DF78;
+  --lime-subtle: #F2F8DE;
+  --lime-dark: #3F520E;
   
-  --alert-color: #D46B45;
-  --alert-subtle: #FDF1ED;
-  --warning-color: #C28212;
-  --warning-subtle: #FEF8ED;
-  --info-color: #2F6B8F;
-  --info-subtle: #EDF5F9;
+  /* Terracotta (Alerts, Overdue, Competitor Opportunities) */
+  --terracotta: #C85A32;
+  --terracotta-hover: #B24E29;
+  --terracotta-subtle: #FCECE7;
+  --terracotta-text: #963816;
+  
+  /* Borders & Dividers */
+  --border-color: #DADCD7;
+  --border-subtle: #E7E9E4;
+  --border-focus: #173F35;
+  
+  /* Status Colors */
+  --status-novo: #616963;
+  --status-pesquisar: #2B617E;
+  --status-futuro: #8F6013;
+  --status-realizado: #20539E;
+  --status-interessado: #173F35;
+  --status-seminteresse: #A13333;
+  --status-cliente: #2E6B34;
   
   /* Typography */
-  --font-heading: 'Manrope', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-interface: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Sora', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-interface: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
   
   /* Radii */
   --radius-xs: 4px;
@@ -39,12 +55,12 @@
   --radius-lg: 10px;
   --radius-full: 9999px;
   
-  /* Elevation / Shadows */
-  --shadow-xs: 0 1px 2px rgba(23, 24, 22, 0.04);
-  --shadow-sm: 0 1px 3px rgba(23, 24, 22, 0.06), 0 1px 2px rgba(23, 24, 22, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(23, 24, 22, 0.08), 0 2px 4px -1px rgba(23, 24, 22, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(23, 24, 22, 0.08), 0 4px 6px -2px rgba(23, 24, 22, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(23, 24, 22, 0.1), 0 10px 10px -5px rgba(23, 24, 22, 0.04);
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(32, 38, 34, 0.04);
+  --shadow-sm: 0 1px 3px rgba(32, 38, 34, 0.06), 0 1px 2px rgba(32, 38, 34, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(32, 38, 34, 0.07), 0 2px 4px -1px rgba(32, 38, 34, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(32, 38, 34, 0.08), 0 4px 6px -2px rgba(32, 38, 34, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(32, 38, 34, 0.1), 0 10px 10px -5px rgba(32, 38, 34, 0.04);
   
   /* Transitions */
   --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -52,8 +68,9 @@
   --transition-smooth: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   
   /* Layout Sizing */
-  --sidebar-width: 68px;
-  --topbar-height: 60px;
+  --sidebar-width-expanded: 210px;
+  --sidebar-width-compact: 64px;
+  --topbar-height: 56px;
   --z-sidebar: 40;
   --z-topbar: 30;
   --z-modal: 100;

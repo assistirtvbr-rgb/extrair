@@ -2,35 +2,44 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import SearchView from './views/SearchView';
+import PipelineView from './views/PipelineView';
 import ListsView from './views/ListsView';
 import FavoritesView from './views/FavoritesView';
 import HistoryView from './views/HistoryView';
 import ComparatorView from './views/ComparatorView';
 import SettingsView from './views/SettingsView';
+import BusinessDetails from './components/BusinessDetails';
 import ExportModal from './components/ExportModal';
 import AddToListModal from './components/AddToListModal';
 import RadarModal from './components/RadarModal';
+import BatchEnrichModal from './components/BatchEnrichModal';
+import CommandPalette from './components/CommandPalette';
 
 import { placesService } from './services/placesService';
 import { geoService } from './services/geoService';
 import { storageService } from './services/storageService';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('search'); // 'search' | 'lists' | 'favorites' | 'comparator' | 'history' | 'settings'
-  const [viewMode, setViewMode] = useState('split'); // 'split' | 'list' | 'map'
-  const [displayMode, setDisplayMode] = useState('list'); // 'list' | 'table'
+  const [currentView, setCurrentView] = useState('search'); // 'search' | 'pipeline' | 'lists' | 'favorites' | 'comparator' | 'history' | 'settings'
+  const [viewMode, setViewMode] = useState('split'); // 'split' | 'list' | 'map' | 'table'
+
+  // Settings & Mode
+  const [settings, setSettings] = useState(storageService.getSettings());
+  const [isDemoMode, setIsDemoMode] = useState(settings.demoMode ?? true);
 
   // Search state
   const [query, setQuery] = useState('odontologia');
-  const [locationInput, setLocationInput] = useState('Tijuca, Rio de Janeiro');
+  const [locationInput, setLocationInput] = useState('Belford Roxo - RJ');
   const [radiusKm, setRadiusKm] = useState(5);
-  const [centerLat, setCenterLat] = useState(-22.9248);
-  const [centerLng, setCenterLng] = useState(-43.2326);
+  const [centerLat, setCenterLat] = useState(-22.7639);
+  const [centerLng, setCenterLng] = useState(-43.3994);
   const [places, setPlaces] = useState([]);
+  const [nextPageToken, setNextPageToken] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMockApi, setIsMockApi] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
-  // Selection & Details
+  // Selection & Details (Centralized)
   const [selectedPlaces, setSelectedPlaces] = useState([]);
   const [activePlace, setActivePlace] = useState(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState(null);
@@ -40,6 +49,8 @@ export default function App() {
   const [isAddToListOpen, setIsAddToListOpen] = useState(false);
   const [isRadarOpen, setIsRadarOpen] = useState(false);
   const [radarTargetPlace, setRadarTargetPlace] = useState(null);
+  const [isBatchEnrichOpen, setIsBatchEnrichOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Filters state
@@ -48,27 +59,48 @@ export default function App() {
     minReviews: 0,
     onlyWithPhone: false,
     onlyWithWebsite: false,
+    onlyWithInstagram: false,
+    onlyWithWhatsApp: false,
     onlyOpenNow: false,
     sortBy: 'distance'
   });
 
-  // Local storage reactive states
+  // Unified Lead Store (CRM, Tags, Notes, Digital Presence)
+  const [leadStore, setLeadStore] = useState(storageService.getAllLeads());
   const [favorites, setFavorites] = useState(storageService.getFavorites());
   const [lists, setLists] = useState(storageService.getLists());
-  const [leadMetadata, setLeadMetadata] = useState(storageService.getAllLeadMetadata());
 
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+  const activeAbortControllerRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  // Sync favorites & lists helper
+  const showToast = (text, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, text, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  };
+
+  // Sync state helper
   const reloadData = useCallback(() => {
+    setLeadStore(storageService.getAllLeads());
     setFavorites(storageService.getFavorites());
     setLists(storageService.getLists());
-    setLeadMetadata(storageService.getAllLeadMetadata());
   }, []);
 
-  // Perform search
+  // Perform Primary Search
   const handleSearch = useCallback(async (searchQuery, searchLocation, searchRadius, customLat = null, customLng = null) => {
+    // Cancel in-flight search
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    activeAbortControllerRef.current = abortController;
+
     setIsLoading(true);
+    setApiError(null);
     setActivePlace(null);
     setSelectedPlaces([]);
 
@@ -78,15 +110,10 @@ export default function App() {
       let locName = searchLocation;
 
       if (lat === null || lng === null) {
-        const geo = await geoService.geocode(searchLocation || 'Tijuca, Rio de Janeiro');
-        if (geo) {
-          lat = geo.lat;
-          lng = geo.lng;
-          locName = geo.displayName || searchLocation;
-        } else {
-          lat = -22.9248;
-          lng = -43.2326;
-        }
+        const geo = await geoService.geocode(searchLocation || 'Belford Roxo - RJ', isDemoMode);
+        lat = geo.lat;
+        lng = geo.lng;
+        locName = geo.displayName || searchLocation;
       }
 
       setCenterLat(lat);
@@ -94,37 +121,82 @@ export default function App() {
 
       const res = await placesService.searchPlaces({
         query: searchQuery,
+        locationName: locName,
         latitude: lat,
         longitude: lng,
-        radiusKm: searchRadius
-      });
-
-      setPlaces(res.places || []);
-      setIsMockApi(res.isMock);
-
-      // Save to history
-      storageService.addHistory({
-        query: searchQuery,
-        locationName: locName,
-        lat,
-        lng,
         radiusKm: searchRadius,
-        resultsCount: (res.places || []).length
+        isDemo: isDemoMode,
+        abortSignal: abortController.signal
       });
 
+      if (res.error) {
+        setApiError(res.error);
+        setPlaces([]);
+        setNextPageToken(null);
+      } else {
+        setPlaces(res.places || []);
+        setNextPageToken(res.nextPageToken || null);
+        setApiError(null);
+
+        // Save to history
+        storageService.addHistory({
+          query: searchQuery,
+          locationName: locName,
+          lat,
+          lng,
+          radiusKm: searchRadius,
+          resultsCount: (res.places || []).length
+        });
+      }
     } catch (err) {
-      console.error('Search failed:', err);
+      if (err.name !== 'AbortError') {
+        setApiError({ message: err.message, code: 'SEARCH_ERROR' });
+        setPlaces([]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
-  // Initial search on mount
+  // Real Pagination: Load Next Page from API
+  const handleLoadMore = async () => {
+    if (!nextPageToken || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const res = await placesService.searchPlaces({
+        query,
+        locationName: locationInput,
+        latitude: centerLat,
+        longitude: centerLng,
+        radiusKm,
+        pageToken: nextPageToken,
+        isDemo: isDemoMode
+      });
+
+      if (res.places && res.places.length > 0) {
+        // Deduplicate places
+        const existingIds = new Set(places.map(p => p.id || p.place_id));
+        const newPlaces = res.places.filter(p => !existingIds.has(p.id || p.place_id));
+        setPlaces(prev => [...prev, ...newPlaces]);
+        setNextPageToken(res.nextPageToken || null);
+        showToast(`${newPlaces.length} novos estabelecimentos carregados.`);
+      } else {
+        setNextPageToken(null);
+      }
+    } catch (err) {
+      showToast('Não foi possível carregar mais resultados.', 'error');
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Initial load
   useEffect(() => {
-    handleSearch('odontologia', 'Tijuca, Rio de Janeiro', 5);
+    handleSearch('odontologia', 'Belford Roxo - RJ', 5);
   }, [handleSearch]);
 
-  // Handle GPS location
+  // GPS Location handler
   const handleGetCurrentLocation = async () => {
     try {
       const pos = await geoService.getCurrentLocation();
@@ -132,21 +204,29 @@ export default function App() {
       setCenterLat(pos.lat);
       setCenterLng(pos.lng);
       handleSearch(query, pos.displayName, radiusKm, pos.lat, pos.lng);
+      showToast(`Localização obtida: ${pos.displayName}`);
     } catch (err) {
-      alert(err.message || 'Erro ao obter GPS');
+      showToast(err.message, 'error');
     }
+  };
+
+  // Lead CRM update
+  const handleUpdateLead = (placeId, updates, placeData = null) => {
+    storageService.updateLead(placeId, updates, placeData);
+    reloadData();
+  };
+
+  const handleAddActivity = (placeId, activityText, type) => {
+    storageService.addLeadActivity(placeId, activityText, type);
+    reloadData();
+    showToast('Atividade registrada na ficha comercial.');
   };
 
   // Toggle favorite
   const handleToggleFavorite = (place) => {
-    storageService.toggleFavorite(place);
+    const isNowFav = storageService.toggleFavorite(place);
     reloadData();
-  };
-
-  // Update lead metadata (notes, CRM status, tags)
-  const handleUpdateLeadMeta = (placeId, updates) => {
-    storageService.updateLeadMetadata(placeId, updates);
-    reloadData();
+    showToast(isNowFav ? 'Adicionado aos favoritos ⭐' : 'Removido dos favoritos');
   };
 
   // Reset filters
@@ -156,9 +236,21 @@ export default function App() {
       minReviews: 0,
       onlyWithPhone: false,
       onlyWithWebsite: false,
+      onlyWithInstagram: false,
+      onlyWithWhatsApp: false,
       onlyOpenNow: false,
       sortBy: 'distance'
     });
+    showToast('Filtros resetados.');
+  };
+
+  // Toggle Demo Mode
+  const handleToggleDemoMode = (targetMode) => {
+    const nextVal = typeof targetMode === 'boolean' ? targetMode : !isDemoMode;
+    setIsDemoMode(nextVal);
+    storageService.saveSettings({ ...settings, demoMode: nextVal });
+    showToast(nextVal ? 'Modo Demonstração Ativado' : 'Modo Google Places Live Ativado');
+    handleSearch(query, locationInput, radiusKm);
   };
 
   // Open Radar
@@ -167,36 +259,33 @@ export default function App() {
     setIsRadarOpen(true);
   };
 
-  // Global Keyboard Shortcuts
+  // Keyboard Shortcuts (Ctrl+K, Esc, Ctrl+A)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl/Cmd + K: focus search
+      // Ctrl/Cmd + K: Command palette
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        if (currentView !== 'search') setCurrentView('search');
-        setTimeout(() => {
-          if (searchInputRef.current) {
-            searchInputRef.current.focus();
-            searchInputRef.current.select();
-          }
-        }, 50);
+        setIsCommandPaletteOpen(prev => !prev);
       }
 
       // Esc: close active drawer or modals
       if (e.key === 'Escape') {
-        if (isExportOpen) setIsExportOpen(false);
+        if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
+        else if (isBatchEnrichOpen) setIsBatchEnrichOpen(false);
+        else if (isExportOpen) setIsExportOpen(false);
         else if (isAddToListOpen) setIsAddToListOpen(false);
         else if (isRadarOpen) setIsRadarOpen(false);
         else if (isFiltersOpen) setIsFiltersOpen(false);
         else if (activePlace) setActivePlace(null);
       }
 
-      // Ctrl/Cmd + A: select all when on search list
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && currentView === 'search' && !isExportOpen && !isAddToListOpen && !isRadarOpen) {
+      // Ctrl/Cmd + A: select all when on search view
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && currentView === 'search' && !isExportOpen && !isAddToListOpen && !isRadarOpen && !isCommandPaletteOpen) {
         if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
           e.preventDefault();
           if (places.length > 0) {
             setSelectedPlaces(places);
+            showToast(`${places.length} empresas selecionadas.`);
           }
         }
       }
@@ -204,17 +293,18 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentView, isExportOpen, isAddToListOpen, isRadarOpen, isFiltersOpen, activePlace, places]);
+  }, [currentView, isExportOpen, isAddToListOpen, isRadarOpen, isFiltersOpen, isBatchEnrichOpen, isCommandPaletteOpen, activePlace, places]);
 
   return (
     <div className="app-layout">
-      {/* Primary Left Sidebar */}
+      {/* Collapsible Left Sidebar */}
       <Sidebar
         currentView={currentView}
         setCurrentView={setCurrentView}
         listsCount={lists.length}
         favoritesCount={favorites.length}
-        isMockApi={isMockApi}
+        isDemoMode={isDemoMode}
+        onToggleDemoMode={() => handleToggleDemoMode(!isDemoMode)}
       />
 
       {/* Main Workspace Area */}
@@ -227,7 +317,8 @@ export default function App() {
           totalResults={places.length}
           onOpenExport={() => setIsExportOpen(true)}
           onOpenSaveList={() => setIsAddToListOpen(true)}
-          onOpenFilters={() => setIsFiltersOpen(true)}
+          onOpenBatchEnrich={() => setIsBatchEnrichOpen(true)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         />
 
         {/* View Switcher */}
@@ -243,6 +334,10 @@ export default function App() {
               onSearch={handleSearch}
               onGetCurrentLocation={handleGetCurrentLocation}
               isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
+              apiError={apiError}
+              hasNextPage={Boolean(nextPageToken)}
+              onLoadMore={handleLoadMore}
               places={places}
               activePlace={activePlace}
               setActivePlace={setActivePlace}
@@ -255,14 +350,12 @@ export default function App() {
               onOpenRadar={handleOpenRadar}
               onOpenExport={() => setIsExportOpen(true)}
               onOpenSaveList={() => setIsAddToListOpen(true)}
+              onOpenBatchEnrich={() => setIsBatchEnrichOpen(true)}
               viewMode={viewMode}
-              displayMode={displayMode}
-              setDisplayMode={setDisplayMode}
               filters={filters}
               setFilters={setFilters}
               onResetFilters={handleResetFilters}
-              leadMetadata={leadMetadata}
-              onUpdateLeadMeta={handleUpdateLeadMeta}
+              leadStore={leadStore}
               centerLat={centerLat}
               centerLng={centerLng}
               radarPlace={radarTargetPlace}
@@ -272,17 +365,26 @@ export default function App() {
             />
           )}
 
+          {currentView === 'pipeline' && (
+            <PipelineView
+              leadStore={leadStore}
+              onUpdateLead={handleUpdateLead}
+              onOpenDetails={(p) => setActivePlace(p)}
+            />
+          )}
+
           {currentView === 'lists' && (
             <ListsView
               onOpenDetails={(p) => setActivePlace(p)}
-              leadMetadata={leadMetadata}
-              onUpdateLeadMeta={handleUpdateLeadMeta}
+              leadStore={leadStore}
+              onUpdateLead={handleUpdateLead}
             />
           )}
 
           {currentView === 'favorites' && (
             <FavoritesView
               favorites={favorites}
+              leadStore={leadStore}
               onToggleFavorite={handleToggleFavorite}
               onOpenDetails={(p) => setActivePlace(p)}
               onAddToList={(p) => {
@@ -293,7 +395,7 @@ export default function App() {
           )}
 
           {currentView === 'comparator' && (
-            <ComparatorView />
+            <ComparatorView isDemoMode={isDemoMode} />
           )}
 
           {currentView === 'history' && (
@@ -309,10 +411,31 @@ export default function App() {
           )}
 
           {currentView === 'settings' && (
-            <SettingsView onDataReset={reloadData} />
+            <SettingsView
+              onDataReset={reloadData}
+              isDemoMode={isDemoMode}
+              onToggleDemoMode={handleToggleDemoMode}
+            />
           )}
         </main>
       </div>
+
+      {/* Centralized Business Details Drawer (Available across all screens) */}
+      <BusinessDetails
+        isOpen={Boolean(activePlace)}
+        place={activePlace}
+        onClose={() => setActivePlace(null)}
+        isFavorite={Boolean(activePlace && favorites.some(f => (f.id || f.place_id) === (activePlace.id || activePlace.place_id)))}
+        onToggleFavorite={handleToggleFavorite}
+        onAddToList={(p) => {
+          setSelectedPlaces([p]);
+          setIsAddToListOpen(true);
+        }}
+        onOpenRadar={handleOpenRadar}
+        leadData={activePlace ? (leadStore[activePlace.id || activePlace.place_id] || {}) : {}}
+        onUpdateLead={handleUpdateLead}
+        onAddActivity={handleAddActivity}
+      />
 
       {/* Global Modals */}
       <ExportModal
@@ -337,6 +460,33 @@ export default function App() {
           setCurrentView('search');
         }}
       />
+
+      <BatchEnrichModal
+        isOpen={isBatchEnrichOpen}
+        onClose={() => setIsBatchEnrichOpen(false)}
+        places={selectedPlaces.length > 0 ? selectedPlaces : places}
+        onEnrichmentComplete={reloadData}
+      />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={(viewId) => setCurrentView(viewId)}
+        onTriggerAction={(actionId) => {
+          if (actionId === 'enrich') setIsBatchEnrichOpen(true);
+          else if (actionId === 'export') setIsExportOpen(true);
+          else if (actionId === 'clear_filters') handleResetFilters();
+        }}
+      />
+
+      {/* Toast Feedback Messages */}
+      <div className="toast-container" role="status" aria-live="polite">
+        {toasts.map(toast => (
+          <div key={toast.id} className="toast-message">
+            <span>{toast.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

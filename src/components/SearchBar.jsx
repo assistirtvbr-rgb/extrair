@@ -4,7 +4,9 @@ import {
   MapPin, 
   LocateFixed, 
   SlidersHorizontal, 
-  Loader2 
+  Loader2,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import RadiusSelector from './RadiusSelector';
 
@@ -18,7 +20,9 @@ export default function SearchBar({
   onSearch,
   onGetCurrentLocation,
   onOpenFilters,
-  activeFiltersCount = 0,
+  filters,
+  setFilters,
+  onResetFilters,
   isLoading = false,
   searchInputRef
 }) {
@@ -36,7 +40,6 @@ export default function SearchBar({
 
   const handleQuickChipClick = (catQuery) => {
     setQuery(catQuery);
-    // Trigger search directly if location is already set
     if (locationInput.trim()) {
       onSearch(catQuery, locationInput, radiusKm);
     }
@@ -57,18 +60,28 @@ export default function SearchBar({
     onSearch(query, locationInput, radiusKm);
   };
 
+  // Build active filter items
+  const activeFilters = [];
+  if (filters.minRating > 0) activeFilters.push({ key: 'minRating', label: `★ ${filters.minRating}+`, reset: () => setFilters(f => ({ ...f, minRating: 0 })) });
+  if (filters.minReviews > 0) activeFilters.push({ key: 'minReviews', label: `${filters.minReviews}+ avaliações`, reset: () => setFilters(f => ({ ...f, minReviews: 0 })) });
+  if (filters.onlyWithPhone) activeFilters.push({ key: 'phone', label: 'Com telefone', reset: () => setFilters(f => ({ ...f, onlyWithPhone: false })) });
+  if (filters.onlyWithWebsite) activeFilters.push({ key: 'web', label: 'Com website', reset: () => setFilters(f => ({ ...f, onlyWithWebsite: false })) });
+  if (filters.onlyWithInstagram) activeFilters.push({ key: 'ig', label: 'Instagram encontrado', reset: () => setFilters(f => ({ ...f, onlyWithInstagram: false })) });
+  if (filters.onlyWithWhatsApp) activeFilters.push({ key: 'wa', label: 'WhatsApp encontrado', reset: () => setFilters(f => ({ ...f, onlyWithWhatsApp: false })) });
+  if (filters.onlyOpenNow) activeFilters.push({ key: 'open', label: 'Aberto agora', reset: () => setFilters(f => ({ ...f, onlyOpenNow: false })) });
+
   return (
     <div className="search-header-container">
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {/* Primary Search Row */}
         <div className="search-primary-row">
           <div className="search-input-wrapper">
-            <Search size={17} className="search-icon-inside" />
+            <Search size={16} className="search-icon-inside" />
             <input
               ref={searchInputRef}
               type="text"
               className="search-input-main"
-              placeholder="Qual tipo de empresa você procura? (ex: odontologia, academia, restaurante...)"
+              placeholder="Qual tipo de empresa você procura? (ex: odontologia, pet shop, advogados...)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Tipo de empresa"
@@ -79,30 +92,30 @@ export default function SearchBar({
             type="submit"
             className="btn btn-primary"
             disabled={isLoading || !query.trim()}
-            style={{ minWidth: '110px', height: '42px', fontWeight: '600' }}
+            style={{ minWidth: '105px', height: '38px', fontWeight: '600' }}
           >
             {isLoading ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin" />
                 Buscando...
               </>
             ) : (
               <>
-                <Search size={15} />
+                <Search size={14} />
                 Pesquisar
               </>
             )}
           </button>
         </div>
 
-        {/* Location & Radius Row */}
+        {/* Location & Controls Row */}
         <div className="search-controls-row">
           <div className="location-input-wrapper">
-            <MapPin size={15} style={{ position: 'absolute', left: '10px', color: 'var(--text-secondary)' }} />
+            <MapPin size={14} style={{ position: 'absolute', left: '9px', color: 'var(--text-secondary)' }} />
             <input
               type="text"
               className="location-input"
-              placeholder="Cidade, bairro, endereço ou CEP (ex: Tijuca, Rio de Janeiro)"
+              placeholder="Cidade, bairro ou CEP (ex: Belford Roxo - RJ)"
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
               aria-label="Localização de busca"
@@ -112,13 +125,12 @@ export default function SearchBar({
               className="geo-btn-inside"
               onClick={handleLocateClick}
               disabled={locLoading}
-              title="Usar minha localização atual (GPS)"
+              title="Usar minha localização GPS"
             >
-              {locLoading ? <Loader2 size={14} className="animate-spin" /> : <LocateFixed size={14} />}
+              {locLoading ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={13} />}
             </button>
           </div>
 
-          {/* Radius selector */}
           <RadiusSelector
             radiusKm={radiusKm}
             setRadiusKm={setRadiusKm}
@@ -129,22 +141,42 @@ export default function SearchBar({
             }}
           />
 
-          {/* Filters Button */}
           <button
             type="button"
-            className={`btn btn-secondary btn-sm ${activeFiltersCount > 0 ? 'active' : ''}`}
+            className={`btn btn-secondary btn-sm ${activeFilters.length > 0 ? 'active' : ''}`}
             onClick={onOpenFilters}
-            style={{ height: '34px', position: 'relative' }}
+            style={{ height: '32px' }}
           >
-            <SlidersHorizontal size={14} />
+            <SlidersHorizontal size={13} />
             Filtros
-            {activeFiltersCount > 0 && (
-              <span className="badge badge-green" style={{ marginLeft: '2px', padding: '1px 5px', fontSize: '10px' }}>
-                {activeFiltersCount}
+            {activeFilters.length > 0 && (
+              <span className="badge badge-lime" style={{ padding: '0 4px', fontSize: '10px' }}>
+                {activeFilters.length}
               </span>
             )}
           </button>
         </div>
+
+        {/* Removable active filter pills */}
+        {activeFilters.length > 0 && (
+          <div className="active-filters-chips-row">
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Filtros ativos:</span>
+            {activeFilters.map(f => (
+              <span key={f.key} className="active-filter-tag">
+                {f.label}
+                <X size={12} className="active-filter-remove" onClick={f.reset} />
+              </span>
+            ))}
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={onResetFilters}
+              style={{ fontSize: '11px', padding: '1px 4px', color: 'var(--text-muted)' }}
+            >
+              Limpar todos
+            </button>
+          </div>
+        )}
 
         {/* Quick Suggestion Chips */}
         <div className="quick-chips-row">

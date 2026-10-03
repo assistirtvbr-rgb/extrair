@@ -4,44 +4,67 @@ import { calculateDistance } from '../utils/distance';
 
 export const placesService = {
   /**
-   * Search establishments using Cloudflare Worker proxy to Google Places API (New)
+   * Search establishments with explicit Demo vs Live mode, real pagination and cancellation
    */
-  async searchPlaces({ query, locationName = '', latitude, longitude, radiusKm = 5, pageToken = null }) {
-    const settings = storageService.getSettings();
-    // Default endpoint: relative /api/search when running in Worker or custom
-    const workerUrl = window.location.origin.includes('workers.dev') || window.location.origin.includes('localhost')
-      ? '/api/search'
-      : (settings.workerApiUrl || '/api/search');
-      
+  async searchPlaces({
+    query,
+    locationName = '',
+    latitude,
+    longitude,
+    radiusKm = 5,
+    pageToken = null,
+    isDemo = false,
+    abortSignal = null
+  }) {
     const radiusMeters = Math.min(Math.max(Math.round(radiusKm * 1000), 100), 50000);
+
+    // Explicit Demo Mode
+    if (isDemo) {
+      // Simulate short network delay
+      await new Promise(r => setTimeout(r, 200));
+
+      const mockResults = generateMockPlaces(
+        query,
+        locationName || 'Região Selecionada',
+        latitude,
+        longitude,
+        radiusKm,
+        pageToken ? 10 : 20
+      );
+
+      return {
+        places: mockResults,
+        nextPageToken: pageToken ? null : 'demo_page_2_token',
+        isMock: true,
+        error: null,
+        total: mockResults.length
+      };
+    }
+
+    // Live Mode via Cloudflare Worker
+    const settings = storageService.getSettings();
+    const endpoint = settings.workerApiUrl || '/api/search';
 
     const payload = {
       query: query.trim(),
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       radius: radiusMeters,
-      pageToken
+      pageToken: pageToken || null
     };
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-      const response = await fetch(workerUrl, {
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: controller.signal
+        signal: abortSignal
       });
-
-      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
         
-        // Enrich results with distance from query center
+        // Enrich results with distance from search coordinates and validate radius
         const places = (data.places || []).map(place => {
           const lat = place.location?.latitude || place.lat;
           const lng = place.location?.longitude || place.lng;
@@ -59,30 +82,49 @@ export const placesService = {
           places,
           nextPageToken: data.nextPageToken || null,
           isMock: false,
+          error: null,
           total: places.length
         };
       } else {
         const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || `Worker HTTP ${response.status}`);
+        const errorMessage = errJson.error || `Erro de comunicação com o servidor (HTTP ${response.status}).`;
+        const errorCode = errJson.code || 'HTTP_ERROR';
+
+        return {
+          places: [],
+          nextPageToken: null,
+          isMock: false,
+          error: {
+            message: errorMessage,
+            code: errorCode,
+            hint: errJson.hint || null
+          },
+          total: 0
+        };
       }
     } catch (err) {
-      // High-fidelity fallback generating establishments tailored to the searched location
-      const mockResults = generateMockPlaces(query, locationName || 'Região Selecionada', latitude, longitude, radiusKm, 20);
-      
+      if (err.name === 'AbortError') {
+        throw err;
+      }
+
       return {
-        places: mockResults,
+        places: [],
         nextPageToken: null,
-        isMock: true,
-        errorMessage: err.message,
-        total: mockResults.length
+        isMock: false,
+        error: {
+          message: `Falha de conexão com a API: ${err.message}`,
+          code: 'NETWORK_ERROR',
+          hint: 'Verifique se o Cloudflare Worker está online ou ative o Modo Demonstração.'
+        },
+        total: 0
       };
     }
   },
 
   /**
-   * Search competitors around a specific place (Radar mode)
+   * Search nearby competitors for Radar view
    */
-  async getCompetitors(place, radiusKm = 3) {
+  async getCompetitors(place, radiusKm = 3, isDemo = false) {
     const lat = place.location?.latitude || place.lat;
     const lng = place.location?.longitude || place.lng;
     const category = place.primaryTypeDisplayName?.text || place.category || 'odontologia';
@@ -93,7 +135,8 @@ export const placesService = {
       locationName: address,
       latitude: lat,
       longitude: lng,
-      radiusKm
+      radiusKm,
+      isDemo
     });
   }
 };

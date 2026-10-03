@@ -1,17 +1,15 @@
 import React from 'react';
-import { Star, Phone, Globe, Navigation, LayoutList, Table as TableIcon } from 'lucide-react';
+import { Star, Phone, Globe, MessageCircle } from 'lucide-react';
 import { formatDistance } from '../utils/distance';
 
 export default function SearchSummary({ 
   places = [], 
-  displayMode = 'list', 
-  setDisplayMode 
+  leadStore = {}
 }) {
   if (!places || places.length === 0) return null;
 
   const total = places.length;
   
-  // Calculate stats
   const validRatings = places.filter(p => p.rating && p.rating > 0);
   const avgRating = validRatings.length > 0 
     ? (validRatings.reduce((acc, p) => acc + p.rating, 0) / validRatings.length).toFixed(1)
@@ -23,6 +21,14 @@ export default function SearchSummary({
   const withWebCount = places.filter(p => p.websiteUri || p.website).length;
   const webPercent = Math.round((withWebCount / total) * 100);
 
+  const withWhatsAppCount = places.filter(p => {
+    const id = p.id || p.place_id;
+    const lead = leadStore[id] || {};
+    const dp = p.digitalPresence || lead.digitalPresence || {};
+    return Boolean(dp.whatsapp?.url || dp.whatsapp?.handle);
+  }).length;
+  const waPercent = Math.round((withWhatsAppCount / total) * 100);
+
   const validDistances = places.filter(p => p.distanceKm !== null && p.distanceKm !== undefined);
   const avgDistance = validDistances.length > 0
     ? (validDistances.reduce((acc, p) => acc + p.distanceKm, 0) / validDistances.length)
@@ -32,60 +38,54 @@ export default function SearchSummary({
     <div className="search-insights-bar">
       <div className="insights-metrics">
         <div className="insight-metric-item">
-          <span className="insight-metric-value">{total}</span>
-          <span className="insight-metric-label">{total === 1 ? 'local' : 'locais'}</span>
+          <span className="insight-metric-value tnum">{total}</span>
+          <span style={{ color: 'var(--text-secondary)' }}>{total === 1 ? 'local' : 'locais'}</span>
         </div>
 
         <div style={{ color: 'var(--border-color)' }}>•</div>
 
         <div className="insight-metric-item">
-          <Star size={13} className="result-rating-star" />
-          <span className="insight-metric-value">{avgRating}</span>
-          <span className="insight-metric-label">nota média</span>
+          <Star size={12} style={{ color: '#EAB308', fill: '#EAB308' }} />
+          <span className="insight-metric-value tnum">{avgRating}</span>
+          <span style={{ color: 'var(--text-secondary)' }}>média</span>
         </div>
 
         <div style={{ color: 'var(--border-color)' }}>•</div>
 
         <div className="insight-metric-item">
-          <span className="insight-metric-value">{phonePercent}%</span>
-          <span className="insight-metric-label">com telefone</span>
+          <Phone size={12} color="var(--text-secondary)" />
+          <span className="insight-metric-value tnum">{phonePercent}%</span>
+          <span style={{ color: 'var(--text-secondary)' }}>com telefone</span>
         </div>
 
         <div style={{ color: 'var(--border-color)' }}>•</div>
 
         <div className="insight-metric-item">
-          <span className="insight-metric-value">{webPercent}%</span>
-          <span className="insight-metric-label">com website</span>
+          <Globe size={12} color="var(--text-secondary)" />
+          <span className="insight-metric-value tnum">{webPercent}%</span>
+          <span style={{ color: 'var(--text-secondary)' }}>com site</span>
         </div>
+
+        {waPercent > 0 && (
+          <>
+            <div style={{ color: 'var(--border-color)' }}>•</div>
+            <div className="insight-metric-item">
+              <MessageCircle size={12} color="#128C7E" />
+              <span className="insight-metric-value tnum">{waPercent}%</span>
+              <span style={{ color: 'var(--text-secondary)' }}>com WhatsApp</span>
+            </div>
+          </>
+        )}
 
         {avgDistance !== null && (
           <>
             <div style={{ color: 'var(--border-color)' }}>•</div>
             <div className="insight-metric-item">
-              <span className="insight-metric-value">{formatDistance(avgDistance)}</span>
-              <span className="insight-metric-label">distância média</span>
+              <span className="insight-metric-value tnum">{formatDistance(avgDistance)}</span>
+              <span style={{ color: 'var(--text-secondary)' }}>raio médio</span>
             </div>
           </>
         )}
-      </div>
-
-      <div className="insights-tools">
-        <div className="radius-selector" style={{ padding: '1px' }}>
-          <button
-            className={`radius-chip ${displayMode === 'list' ? 'active' : ''}`}
-            onClick={() => setDisplayMode('list')}
-            title="Visualização em Lista / Diretório"
-          >
-            <LayoutList size={13} />
-          </button>
-          <button
-            className={`radius-chip ${displayMode === 'table' ? 'active' : ''}`}
-            onClick={() => setDisplayMode('table')}
-            title="Visualização em Tabela Avançada"
-          >
-            <TableIcon size={13} />
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -1,27 +1,21 @@
 import React, { useState } from 'react';
 import { 
-  BookmarkPlus, 
   Trash2, 
   Download, 
   Search, 
-  ExternalLink, 
-  Phone, 
-  Globe, 
-  Star, 
-  FolderPlus,
   FolderOpen,
-  Tag,
-  ArrowLeft
+  Plus
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
-import { extractCleanDomain } from '../utils/domain';
+import DigitalPresenceBadge from '../components/DigitalPresenceBadge';
+import LeadScoreBadge from '../components/LeadScoreBadge';
 import { formatPhone, getCategoryLabel, formatDate } from '../utils/formatter';
 import { exportToCSV, exportToJSON } from '../utils/csv';
 
 export default function ListsView({
   onOpenDetails,
-  leadMetadata,
-  onUpdateLeadMeta
+  leadStore = {},
+  onUpdateLead
 }) {
   const [lists, setLists] = useState(storageService.getLists());
   const [activeListId, setActiveListId] = useState(lists.length > 0 ? lists[0].id : null);
@@ -61,7 +55,7 @@ export default function ListsView({
 
   const filteredPlaces = (activeList?.places || []).filter(p => {
     const placeId = p.id || p.place_id;
-    const meta = leadMetadata[placeId] || { status: 'Novo' };
+    const meta = leadStore[placeId] || { status: 'Novo' };
     
     if (statusFilter !== 'ALL' && meta.status !== statusFilter) {
       return false;
@@ -80,16 +74,16 @@ export default function ListsView({
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', background: 'var(--bg-main)' }}>
       {/* Sidebar of lists */}
-      <div style={{ width: '280px', borderRight: '1px solid var(--border-color)', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: '700' }}>Listas de Prospecção</h2>
-          <span className="badge badge-neutral">{lists.length}</span>
+      <div style={{ width: '270px', borderRight: '1px solid var(--border-color)', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: '13.5px', fontWeight: '700' }}>Listas de Prospecção</h2>
+          <span className="badge badge-neutral tnum">{lists.length}</span>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {lists.length === 0 ? (
-            <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              Nenhuma lista salva ainda. Faça uma pesquisa e clique em <strong>Salvar lista</strong>.
+            <div style={{ padding: '20px 10px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+              Nenhuma lista criada. Faça uma busca e clique em <strong>Salvar lista</strong>.
             </div>
           ) : (
             lists.map(list => {
@@ -99,10 +93,10 @@ export default function ListsView({
                   key={list.id}
                   onClick={() => setActiveListId(list.id)}
                   style={{
-                    padding: '10px 12px',
+                    padding: '9px 12px',
                     borderRadius: 'var(--radius-sm)',
                     background: isSelected ? 'var(--green-subtle)' : 'transparent',
-                    border: isSelected ? '1px solid var(--green-light)' : '1px solid transparent',
+                    border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -123,9 +117,9 @@ export default function ListsView({
                     className="btn-icon"
                     onClick={(e) => handleDeleteList(list.id, e)}
                     title="Excluir lista"
-                    style={{ padding: '4px' }}
+                    style={{ padding: '3px' }}
                   >
-                    <Trash2 size={13} color="var(--alert-color)" />
+                    <Trash2 size={13} color="var(--terracotta)" />
                   </button>
                 </div>
               );
@@ -139,22 +133,22 @@ export default function ListsView({
         {activeList ? (
           <>
             {/* Header */}
-            <div style={{ padding: '16px 24px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 20px', background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <h2 style={{ fontSize: '16px', fontWeight: '700' }}>{activeList.name}</h2>
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: '700' }}>{activeList.name}</h2>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
                   Criada em {formatDate(activeList.createdAt)} • {activeList.places?.length || 0} estabelecimentos
                 </span>
               </div>
 
               <button className="btn btn-secondary btn-sm" onClick={handleExportListCSV}>
-                <Download size={14} />
+                <Download size={13} />
                 Exportar lista (CSV)
               </button>
             </div>
 
             {/* Sub-toolbar: Search & Status Filter */}
-            <div style={{ padding: '10px 24px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ padding: '8px 20px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div className="results-filter-inline" style={{ width: '220px' }}>
                 <Search size={13} className="search-icon" />
                 <input
@@ -170,7 +164,7 @@ export default function ListsView({
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                  style={{ padding: '3px 6px', fontSize: '11.5px' }}
                 >
                   <option value="ALL">Todos os status</option>
                   <option value="Novo">Novo</option>
@@ -187,7 +181,7 @@ export default function ListsView({
             {/* Items Table */}
             <div className="table-container">
               {filteredPlaces.length === 0 ? (
-                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   Nenhum estabelecimento encontrado nesta lista com os filtros aplicados.
                 </div>
               ) : (
@@ -195,11 +189,11 @@ export default function ListsView({
                   <thead>
                     <tr>
                       <th>Empresa</th>
+                      <th>Score</th>
                       <th>Categoria</th>
+                      <th>Presença Digital</th>
                       <th>Telefone</th>
-                      <th>Website</th>
-                      <th>Avaliação</th>
-                      <th>Status Lead (CRM)</th>
+                      <th>Status Pipeline</th>
                       <th>Ações</th>
                     </tr>
                   </thead>
@@ -210,36 +204,27 @@ export default function ListsView({
                       const category = place.primaryTypeDisplayName?.text || place.category;
                       const phone = place.nationalPhoneNumber || place.phone;
                       const rawWeb = place.websiteUri || place.website;
-                      const cleanDomain = extractCleanDomain(rawWeb);
-                      const meta = leadMetadata[placeId] || { status: 'Novo' };
+                      const leadData = leadStore[placeId] || { status: 'Novo' };
+                      const dp = place.digitalPresence || leadData.digitalPresence || {};
 
                       return (
                         <tr key={placeId} onClick={() => onOpenDetails(place)} style={{ cursor: 'pointer' }}>
                           <td style={{ fontWeight: '600' }}>{name}</td>
                           <td>
+                            <LeadScoreBadge place={{ ...place, digitalPresence: dp }} leadData={leadData} />
+                          </td>
+                          <td>
                             <span className="badge badge-neutral">{getCategoryLabel(category)}</span>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <DigitalPresenceBadge digitalPresence={dp} websiteUrl={rawWeb} onOpenDetails={() => onOpenDetails(place)} />
                           </td>
                           <td>{phone ? formatPhone(phone) : '—'}</td>
                           <td onClick={(e) => e.stopPropagation()}>
-                            {cleanDomain ? (
-                              <a href={rawWeb} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <Globe size={12} /> {cleanDomain}
-                              </a>
-                            ) : '—'}
-                          </td>
-                          <td>
-                            {place.rating ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
-                                <Star size={12} className="result-rating-star" />
-                                {place.rating} ({place.userRatingCount || 0})
-                              </span>
-                            ) : '—'}
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
                             <select
-                              value={meta.status || 'Novo'}
-                              onChange={(e) => onUpdateLeadMeta(placeId, { ...meta, status: e.target.value })}
-                              style={{ fontSize: '11px', padding: '2px 6px', borderRadius: 'var(--radius-xs)' }}
+                              value={leadData.status || 'Novo'}
+                              onChange={(e) => onUpdateLead(placeId, { status: e.target.value })}
+                              style={{ fontSize: '11px', padding: '2px 5px', borderRadius: 'var(--radius-xs)' }}
                             >
                               <option value="Novo">Novo</option>
                               <option value="Pesquisar">Pesquisar</option>
@@ -256,7 +241,7 @@ export default function ListsView({
                               onClick={(e) => handleRemovePlaceFromList(placeId, e)}
                               title="Remover desta lista"
                             >
-                              <Trash2 size={13} color="var(--alert-color)" />
+                              <Trash2 size={13} color="var(--terracotta)" />
                             </button>
                           </td>
                         </tr>
@@ -270,11 +255,11 @@ export default function ListsView({
         ) : (
           <div className="empty-state-container">
             <div className="empty-state-icon">
-              <FolderOpen size={26} />
+              <FolderOpen size={24} />
             </div>
             <h3 className="empty-state-title">Nenhuma lista selecionada</h3>
             <p className="empty-state-desc">
-              Crie uma lista na tela de pesquisa de empresas ou selecione uma lista na barra lateral.
+              Crie uma lista na tela de pesquisa ou selecione uma lista no menu à esquerda.
             </p>
           </div>
         )}
