@@ -24,8 +24,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState('split'); // 'split' | 'list' | 'map' | 'table'
 
   // Settings & Mode
-  const [settings, setSettings] = useState(storageService.getSettings());
-  const [isDemoMode, setIsDemoMode] = useState(settings.demoMode ?? true);
+  const [settings, setSettings] = useState(() => storageService.getSettings());
+  const [isDemoMode, setIsDemoMode] = useState(settings.demoMode ?? false);
 
   // Search state
   const [query, setQuery] = useState('odontologia');

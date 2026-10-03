@@ -24,8 +24,8 @@ const DEFAULT_SETTINGS = {
   defaultRadiusKm: 5,
   defaultSort: 'distance',
   autoSaveHistory: true,
-  splitRatio: 42, // list 42% / map 58%
-  demoMode: true, // explicit Demo Mode vs Live Mode
+  splitRatio: 46, // list 46% / map 54%
+  demoMode: false, // Default to Live Real Data (OpenStreetMap / Google Places)
   tableColumns: {
     name: true,
     category: true,
