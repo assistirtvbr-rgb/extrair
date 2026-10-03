@@ -183,39 +183,70 @@ export const geoService = {
   },
 
   /**
-   * Browser Geolocation GPS
+   * Browser Geolocation GPS with Fast IP-Geo Fallback
    */
-  getCurrentLocation() {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocalização não é suportada pelo seu navegador.'));
-        return;
-      }
+  async getCurrentLocation() {
+    // 1. Try Browser HTML5 Geolocation with quick timeout
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      try {
+        const coords = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => reject(err),
+            { enableHighAccuracy: false, timeout: 4500, maximumAge: 30000 }
+          );
+        });
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          try {
-            const name = await geoService.reverseGeocode(lat, lng);
-            resolve({ lat, lng, displayName: name, name });
-          } catch {
-            resolve({ lat, lng, displayName: 'Minha Localização', name: 'Minha Localização' });
-          }
-        },
-        (error) => {
-          let message = 'Não foi possível obter sua localização.';
-          if (error.code === error.PERMISSION_DENIED) {
-            message = 'Permissão de localização negada pelo usuário.';
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            message = 'Informações de GPS indisponíveis.';
-          } else if (error.code === error.TIMEOUT) {
-            message = 'Tempo limite esgotado ao buscar GPS.';
-          }
-          reject(new Error(message));
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-      );
-    });
+        const name = await geoService.reverseGeocode(coords.lat, coords.lng);
+        return {
+          lat: coords.lat,
+          lng: coords.lng,
+          displayName: name,
+          name
+        };
+      } catch (geoErr) {
+        console.info('HTML5 Geolocation unavailable, trying IP-Geo fallback...', geoErr.message);
+      }
+    }
+
+    // 2. Fallback to Cloudflare Worker GeoIP (/api/geoip)
+    try {
+      const res = await fetch('/api/geoip');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          const name = data.displayName || `${data.city} - ${data.region}`;
+          return {
+            lat: data.latitude,
+            lng: data.longitude,
+            displayName: name,
+            name
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Worker GeoIP failed:', e);
+    }
+
+    // 3. Fallback to free public IP-API
+    try {
+      const ipRes = await fetch('https://ipapi.co/json/');
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        if (ipData.latitude && ipData.longitude) {
+          const name = `${ipData.city} - ${ipData.region_code || ipData.region}`;
+          return {
+            lat: ipData.latitude,
+            lng: ipData.longitude,
+            displayName: name,
+            name
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Public IPAPI fallback failed:', e);
+    }
+
+    throw new Error('Não foi possível obter sua localização automaticamente. Por favor, digite a cidade ou CEP no campo de busca.');
   }
 };

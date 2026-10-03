@@ -552,6 +552,29 @@ export default {
       });
     }
 
+    // GeoIP Endpoint (Cloudflare edge geolocation)
+    if (url.pathname === '/api/geoip') {
+      const cf = request.cf || {};
+      const city = cf.city || '';
+      const region = cf.region || '';
+      const country = cf.country || 'BR';
+      const latitude = cf.latitude ? parseFloat(cf.latitude) : null;
+      const longitude = cf.longitude ? parseFloat(cf.longitude) : null;
+      const postalCode = cf.postalCode || '';
+
+      const displayName = [city, region ? region : null].filter(Boolean).join(' - ') || 'Brasil';
+
+      return jsonResponse({
+        city,
+        region,
+        country,
+        latitude,
+        longitude,
+        postalCode,
+        displayName
+      });
+    }
+
     // Search Endpoint
     if (url.pathname === '/api/search') {
       if (request.method !== 'POST') {

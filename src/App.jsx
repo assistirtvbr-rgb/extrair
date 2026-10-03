@@ -250,8 +250,10 @@ export default function App() {
       setLocationInput(pos.displayName);
       setCenterLat(pos.lat);
       setCenterLng(pos.lng);
-      handleSearch(query, pos.displayName, radiusKm, pos.lat, pos.lng);
       showToast(`Localização obtida: ${pos.displayName}`);
+      if (query && query.trim()) {
+        handleSearch(query.trim(), pos.displayName, radiusKm, pos.lat, pos.lng);
+      }
     } catch (err) {
       showToast(err.message, 'error');
     }
